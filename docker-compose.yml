@@ -1,0 +1,120 @@
+services:
+  # -------------------------
+  # Go Application (Air live-reload)
+  # -------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+
+    container_name: go_api
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      APP_PORT: ${APP_PORT:-8080}
+      APP_PREFIX: ${APP_PREFIX:-/api}
+      APP_VERSION: ${APP_VERSION:-0.1.0}
+      APP_IS_PRODUCTION: ${APP_IS_PRODUCTION:-false}
+      APP_HEALTH_CHECK_ROUTE: ${APP_HEALTH_CHECK_ROUTE:-/health}
+      APP_SHUTDOWN_TIMEOUT: ${APP_SHUTDOWN_TIMEOUT:-10s}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-appuser}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      DB_NAME: ${POSTGRES_DB:-appdb}
+      DB_SSLMODE: disable
+
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
+    volumes:
+      # Mount source for live reload
+      - .:/app
+      # Persist module & build caches across rebuilds
+      - go_mod_cache:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - backend
+
+
+  # -------------------------
+  # PostgreSQL
+  # -------------------------
+  postgres:
+    image: postgres:17-alpine
+
+    container_name: go_postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-appuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-appdb}
+
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    networks:
+      - backend
+
+
+  # -------------------------
+  # pgAdmin
+  # -------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+
+    container_name: go_pgadmin
+
+    restart: unless-stopped
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Set PGADMIN_DEFAULT_EMAIL in .env}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Set PGADMIN_DEFAULT_PASSWORD in .env}
+
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - backend
+
+
+networks:
+  backend:
+    driver: bridge
+
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  go_mod_cache:
+  go_build_cache:

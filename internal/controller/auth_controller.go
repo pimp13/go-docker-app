@@ -116,10 +116,10 @@ func (c *AuthController) ChangePassword(ctx *echo.Context) error {
 	return response.OK(ctx, session)
 }
 
-// RequireAuth reads the JWT from the configured auth cookie and loads the user.
+// RequireAuth reads the JWT from the auth cookie, then from Authorization: Bearer.
 func (c *AuthController) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx *echo.Context) error {
-		raw, err := c.tokenFromCookie(ctx)
+		raw, err := c.tokenFromRequest(ctx)
 		if err != nil {
 			return response.Unauthorized(ctx, err)
 		}
@@ -134,12 +134,26 @@ func (c *AuthController) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func (c *AuthController) tokenFromCookie(ctx *echo.Context) (string, error) {
-	cookie, err := ctx.Cookie(c.cfg.CookieName)
-	if err != nil || strings.TrimSpace(cookie.Value) == "" {
-		return "", service.ErrUnauthenticated
+func (c *AuthController) tokenFromRequest(ctx *echo.Context) (string, error) {
+	if cookie, err := ctx.Cookie(c.cfg.CookieName); err == nil {
+		if token := strings.TrimSpace(cookie.Value); token != "" {
+			return token, nil
+		}
 	}
-	return cookie.Value, nil
+
+	if token := bearerToken(ctx.Request().Header.Get("Authorization")); token != "" {
+		return token, nil
+	}
+
+	return "", service.ErrUnauthenticated
+}
+
+func bearerToken(header string) string {
+	const prefix = "Bearer "
+	if len(header) < len(prefix) || !strings.EqualFold(header[:len(prefix)], prefix) {
+		return ""
+	}
+	return strings.TrimSpace(header[len(prefix):])
 }
 
 func (c *AuthController) setSessionCookie(ctx *echo.Context, session dto.Session) {

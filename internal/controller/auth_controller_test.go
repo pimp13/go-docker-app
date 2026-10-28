@@ -19,8 +19,9 @@ import (
 const testCookieName = "session_jwt"
 
 type stubAuth struct {
-	session dto.Session
-	err     error
+	session  dto.Session
+	err      error
+	gotToken string
 }
 
 func (s *stubAuth) Register(context.Context, dto.RegisterRequest) (dto.AuthUser, error) {
@@ -31,7 +32,8 @@ func (s *stubAuth) Login(context.Context, dto.LoginRequest) (dto.Session, error)
 	return s.session, s.err
 }
 
-func (s *stubAuth) Authenticate(context.Context, string) (dto.AuthUser, error) {
+func (s *stubAuth) Authenticate(_ context.Context, rawToken string) (dto.AuthUser, error) {
+	s.gotToken = rawToken
 	if s.err != nil {
 		return dto.AuthUser{}, s.err
 	}
@@ -157,6 +159,45 @@ func TestMeRequiresAuthCookie(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "ada@example.com") {
 		t.Fatalf("body = %s", rec.Body.String())
+	}
+}
+
+func TestMeAcceptsBearerWhenCookieIsMissing(t *testing.T) {
+	auth := &stubAuth{
+		session: dto.Session{User: dto.AuthUser{ID: "user-1", Email: "ada@example.com"}},
+	}
+	engine := newAuthEngine(t, auth)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer header.payload.signature")
+	rec := httptest.NewRecorder()
+	engine.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if auth.gotToken != "header.payload.signature" {
+		t.Fatalf("token = %q", auth.gotToken)
+	}
+}
+
+func TestMePrefersCookieOverBearer(t *testing.T) {
+	auth := &stubAuth{
+		session: dto.Session{User: dto.AuthUser{ID: "user-1", Email: "ada@example.com"}},
+	}
+	engine := newAuthEngine(t, auth)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/me", nil)
+	req.AddCookie(&http.Cookie{Name: testCookieName, Value: "from-cookie"})
+	req.Header.Set("Authorization", "Bearer from-header")
+	rec := httptest.NewRecorder()
+	engine.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+	if auth.gotToken != "from-cookie" {
+		t.Fatalf("token = %q", auth.gotToken)
 	}
 }
 

@@ -26,11 +26,21 @@ func NewAuthController(auth service.AuthService, cfg config.AuthConfig) *AuthCon
 
 func (c *AuthController) Register(api *echo.Group) {
 	auth := api.Group("/auth")
-	auth.POST("/register", c.SignUp)
+	auth.POST("/sign-up", c.SignUp)
 	auth.POST("/login", c.Login)
 	auth.POST("/logout", c.Logout)
 	auth.GET("/me", c.Me, c.RequireAuth)
 	auth.POST("/change-password", c.ChangePassword, c.RequireAuth)
+}
+
+func (c *AuthController) trimInputs(req *dto.RegisterRequest) *dto.RegisterRequest {
+	req.FirstName = strings.TrimSpace(req.FirstName)
+	req.LastName = strings.TrimSpace(req.LastName)
+	req.Email = strings.TrimSpace(req.Email)
+	req.Username = strings.TrimSpace(req.Username)
+	req.Phone = strings.TrimSpace(req.Phone)
+
+	return req
 }
 
 func (c *AuthController) SignUp(ctx *echo.Context) error {
@@ -38,11 +48,8 @@ func (c *AuthController) SignUp(ctx *echo.Context) error {
 	if err := ctx.Bind(&req); err != nil {
 		return response.BadRequest(ctx, err)
 	}
-	req.FirstName = strings.TrimSpace(req.FirstName)
-	req.LastName = strings.TrimSpace(req.LastName)
-	req.Email = strings.TrimSpace(req.Email)
-	req.Username = strings.TrimSpace(req.Username)
-	req.Phone = strings.TrimSpace(req.Phone)
+	c.trimInputs(&req)
+
 	if err := ctx.Validate(&req); err != nil {
 		return response.BadRequest(ctx, err)
 	}

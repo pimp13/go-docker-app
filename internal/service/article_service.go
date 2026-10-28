@@ -103,7 +103,10 @@ func (s *articleService) GetArticles() ([]dto.ArticleResponse, error) {
 
 func (s *articleService) GetArticleByID(id string) (dto.ArticleResponse, error) {
 	var article model.Article
-	if err := s.db.Where("id = ?", id).First(&article).Error; err != nil {
+	if err := s.db.Debug().Where("id = ?", id).First(&article).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.ArticleResponse{}, errors.New("article not found")
+		}
 		return dto.ArticleResponse{}, err
 	}
 

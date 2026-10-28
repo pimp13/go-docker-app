@@ -41,7 +41,7 @@ func main() {
 
 	log.Println("Connected to PostgreSQL successfully!")
 
-	application := app.New(cfg.App, db)
+	application := app.New(cfg, db)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

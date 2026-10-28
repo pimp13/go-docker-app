@@ -12,17 +12,19 @@ type Services struct {
 	Greeting GreetingService
 	User     UserService
 	Article  ArticleService
+	Auth     AuthService
 }
 
 // NewServices wires concrete service implementations.
 // Pass db so future services (users, auth, …) can depend on it.
-func NewServices(cfg config.AppConfig, db *gorm.DB) *Services {
+func NewServices(cfg *config.Config, db *gorm.DB) *Services {
 	_ = db // reserved for domain services that need persistence
 
 	return &Services{
-		Health:   NewHealthService(cfg.Version),
-		Greeting: NewGreetingService(cfg.Version, cfg.SecretKey),
-		User:     NewUserService(db, cfg.SecretKey),
-		Article:  NewArticleService(db, cfg.SecretKey),
+		Health:   NewHealthService(cfg.App.Version),
+		Greeting: NewGreetingService(cfg.App.Version, cfg.App.SecretKey),
+		User:     NewUserService(db, cfg.App.SecretKey),
+		Article:  NewArticleService(db, cfg.App.SecretKey),
+		Auth:     NewAuthService(db, cfg),
 	}
 }

@@ -22,31 +22,31 @@ type App struct {
 	engine           *echo.Echo
 	isProduction     bool
 	healthCheckRoute string
-	cfg              config.AppConfig
+	cfg              *config.Config
 	services         *service.Services
 }
 
 // New creates an App, builds the service/controller graph, and registers routes.
-func New(cfg config.AppConfig, db *gorm.DB) *App {
+func New(cfg *config.Config, db *gorm.DB) *App {
 	svcs := service.NewServices(cfg, db)
-	handlers := controller.NewHandlers(svcs)
+	handlers := controller.NewHandlers(cfg, svcs)
 
 	engine := echo.New()
 	engine.Validator = appvalidator.New()
 
 	a := &App{
-		port:             cfg.Port,
-		prefix:           cfg.Prefix,
-		version:          cfg.Version,
+		port:             cfg.App.Port,
+		prefix:           cfg.App.Prefix,
+		version:          cfg.App.Version,
 		engine:           engine,
-		isProduction:     cfg.IsProduction,
-		healthCheckRoute: cfg.HealthCheckRoute,
+		isProduction:     cfg.App.IsProduction,
+		healthCheckRoute: cfg.App.HealthCheckRoute,
 		cfg:              cfg,
 		services:         svcs,
 	}
 
 	a.registerMiddleware()
-	controller.Register(a.engine, cfg, handlers)
+	controller.Register(a.engine, cfg.App, handlers)
 
 	return a
 }
@@ -60,8 +60,8 @@ func (a *App) registerMiddleware() {
 // On cancellation Echo performs a graceful shutdown using ShutdownTimeout.
 func (a *App) Run(ctx context.Context) error {
 	sc := echo.StartConfig{
-		Address:         a.cfg.Address(),
-		GracefulTimeout: a.cfg.ShutdownTimeout,
+		Address:         a.cfg.App.Address(),
+		GracefulTimeout: a.cfg.App.ShutdownTimeout,
 		HideBanner:      a.isProduction,
 	}
 

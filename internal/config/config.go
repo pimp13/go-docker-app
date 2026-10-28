@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -9,8 +10,9 @@ import (
 
 // Config is the typed application configuration loaded from the environment.
 type Config struct {
-	App AppConfig
-	DB  DatabaseConfig
+	App  AppConfig
+	DB   DatabaseConfig
+	Auth AuthConfig
 }
 
 // AppConfig holds HTTP server and application runtime settings.
@@ -32,6 +34,18 @@ type DatabaseConfig struct {
 	Password string
 	Name     string
 	SSLMode  string
+}
+
+// AuthConfig holds JWT signing settings and the auth cookie.
+type AuthConfig struct {
+	CookieName     string
+	CookiePath     string
+	CookieDomain   string
+	CookieSecure   bool
+	CookieSameSite string
+	JWTSecret      string
+	JWTIssuer      string
+	TokenTTL       time.Duration
 }
 
 // DSN builds a PostgreSQL connection string for GORM / pgx.
@@ -88,6 +102,21 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	authCookieName, err := envStringRequired("AUTH_COOKIE_NAME")
+	if err != nil {
+		return nil, err
+	}
+
+	tokenTTL, err := envDuration("AUTH_JWT_TTL", 24*time.Hour)
+	if err != nil {
+		return nil, err
+	}
+
+	cookieSecure, err := envBool("AUTH_COOKIE_SECURE", isProduction)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		App: AppConfig{
 			Port:             port,
@@ -105,6 +134,16 @@ func Load() (*Config, error) {
 			Password: dbPassword,
 			Name:     envString("DB_NAME", "appdb"),
 			SSLMode:  envString("DB_SSLMODE", "disable"),
+		},
+		Auth: AuthConfig{
+			CookieName:     authCookieName,
+			CookiePath:     envString("AUTH_COOKIE_PATH", "/"),
+			CookieDomain:   envString("AUTH_COOKIE_DOMAIN", ""),
+			CookieSecure:   cookieSecure,
+			CookieSameSite: strings.ToLower(strings.TrimSpace(envString("AUTH_COOKIE_SAME_SITE", "lax"))),
+			JWTSecret:      envString("AUTH_JWT_SECRET", secretKey),
+			JWTIssuer:      envString("AUTH_JWT_ISSUER", "test"),
+			TokenTTL:       tokenTTL,
 		},
 	}
 
@@ -136,6 +175,35 @@ func (c *Config) validate() error {
 	}
 	if c.App.SecretKey == "" {
 		return fmt.Errorf("SECRET_KEY must not be empty")
+	}
+	if strings.TrimSpace(c.Auth.CookieName) == "" {
+		return fmt.Errorf("AUTH_COOKIE_NAME must not be empty")
+	}
+	if strings.ContainsAny(c.Auth.CookieName, " ;\t,") {
+		return fmt.Errorf("AUTH_COOKIE_NAME contains invalid characters")
+	}
+	if c.Auth.CookiePath == "" || !strings.HasPrefix(c.Auth.CookiePath, "/") {
+		return fmt.Errorf("AUTH_COOKIE_PATH must start with /")
+	}
+	if len(c.Auth.JWTSecret) < 32 {
+		return fmt.Errorf("AUTH_JWT_SECRET must be at least 32 characters")
+	}
+	if strings.TrimSpace(c.Auth.JWTIssuer) == "" {
+		return fmt.Errorf("AUTH_JWT_ISSUER must not be empty")
+	}
+	if c.Auth.TokenTTL <= 0 {
+		return fmt.Errorf("AUTH_JWT_TTL must be greater than zero")
+	}
+	switch c.Auth.CookieSameSite {
+	case "lax", "strict", "none":
+	default:
+		return fmt.Errorf("AUTH_COOKIE_SAME_SITE must be one of lax, strict, none")
+	}
+	if c.Auth.CookieSameSite == "none" && !c.Auth.CookieSecure {
+		return fmt.Errorf("AUTH_COOKIE_SECURE must be true when AUTH_COOKIE_SAME_SITE is none")
+	}
+	if c.App.IsProduction && !c.Auth.CookieSecure {
+		return fmt.Errorf("AUTH_COOKIE_SECURE must be true when APP_IS_PRODUCTION is true")
 	}
 	return nil
 }

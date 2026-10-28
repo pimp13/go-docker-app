@@ -18,15 +18,17 @@ type Handlers struct {
 	Greeting *GreetingController
 	User     *UserController
 	Article  *ArticleController
+	Auth     *AuthController
 }
 
 // NewHandlers builds controllers from the service container.
-func NewHandlers(svcs *service.Services) *Handlers {
+func NewHandlers(cfg *config.Config, svcs *service.Services) *Handlers {
 	return &Handlers{
 		Health:   NewHealthController(svcs.Health),
 		Greeting: NewGreetingController(svcs.Greeting),
 		User:     NewUserController(svcs.User),
 		Article:  NewArticleController(svcs.Article),
+		Auth:     NewAuthController(svcs.Auth, cfg.Auth),
 	}
 }
 
@@ -39,6 +41,7 @@ func Register(e *echo.Echo, cfg config.AppConfig, h *Handlers) {
 	registerAPI(api, h.Greeting)
 	registerAPI(api, h.User)
 	registerAPI(api, h.Article)
+	registerAPI(api, h.Auth)
 }
 
 func registerAPI(api *echo.Group, registrars ...Registrar) {

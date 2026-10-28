@@ -12,15 +12,18 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func main() {
-	cfg, err := config.Load()
+	cfg, err := config.GetInstance()
 	if err != nil {
 		log.Fatalf("load config: %v", err)
 	}
 
-	db, err := gorm.Open(postgres.Open(cfg.DB.DSN()), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(cfg.DB.DSN()), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 	if err != nil {
 		log.Fatalf("connect to PostgreSQL: %v", err)
 	}

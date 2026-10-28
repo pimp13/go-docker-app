@@ -3,9 +3,16 @@ package config
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/joho/godotenv"
+)
+
+var (
+	cfg  *Config
+	once sync.Once
+	err  error
 )
 
 // Config is the typed application configuration loaded from the environment.
@@ -69,7 +76,7 @@ func (a AppConfig) Address() string {
 // Load reads configuration from environment variables.
 // If a .env file exists in the working directory it is loaded first
 // (existing OS env values always win).
-func Load() (*Config, error) {
+func load() (*Config, error) {
 	_ = godotenv.Load()
 
 	port, err := envUint("APP_PORT", 8080)
@@ -152,6 +159,14 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// Get returns the singleton config instance.
+func GetInstance() (*Config, error) {
+	once.Do(func() {
+		cfg, err = load()
+	})
+	return cfg, err
 }
 
 func (c *Config) validate() error {

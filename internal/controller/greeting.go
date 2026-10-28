@@ -1,9 +1,11 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 
 	"test/internal/service"
+	"test/pkg/response"
 
 	"github.com/labstack/echo/v5"
 )
@@ -22,7 +24,7 @@ func NewGreetingController(greeting service.GreetingService) *GreetingController
 func (c *GreetingController) Register(api *echo.Group) {
 	api.GET("", c.Hello)
 	api.GET("/", c.Hello)
-	api.GET("/my-token", c.MyToken)
+	api.POST("/my-token", c.MyToken)
 	api.GET("/hello/:name", c.HelloName)
 }
 
@@ -34,13 +36,13 @@ func (c *GreetingController) Hello(ctx *echo.Context) error {
 // HelloName returns a personalized greeting.
 func (c *GreetingController) HelloName(ctx *echo.Context) error {
 	name := ctx.Param("name")
-	return ctx.JSON(http.StatusOK, c.greeting.HelloName(name))
+	return response.OK(ctx, c.greeting.HelloName(name))
 }
 
 func (c *GreetingController) MyToken(ctx *echo.Context) error {
 	token := c.greeting.MyToken()
 	if token == "" {
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to generate token"})
+		return response.InternalServerError(ctx, errors.New("failed to generate token"))
 	}
-	return ctx.JSON(http.StatusOK, map[string]string{"token": token})
+	return response.OK(ctx, map[string]string{"token": token})
 }

@@ -12,6 +12,9 @@ import (
 	"time"
 )
 
+// 24 hours
+const TokenExpirationTime = 24 * time.Hour
+
 type TokenPayload struct {
 	Random    string `json:"random"`
 	ExpiresAt int64  `json:"exp"`
@@ -28,7 +31,7 @@ func CreateToken(secret string) (string, error) {
 
 	payload := TokenPayload{
 		Random:    base64.RawURLEncoding.EncodeToString(randomBytes),
-		ExpiresAt: time.Now().Add(15 * time.Minute).Unix(),
+		ExpiresAt: time.Now().Add(TokenExpirationTime).Unix(),
 	}
 
 	payloadBytes, err := json.Marshal(payload)

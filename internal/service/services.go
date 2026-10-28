@@ -11,6 +11,7 @@ type Services struct {
 	Health   HealthService
 	Greeting GreetingService
 	User     UserService
+	Article  ArticleService
 }
 
 // NewServices wires concrete service implementations.
@@ -22,5 +23,6 @@ func NewServices(cfg config.AppConfig, db *gorm.DB) *Services {
 		Health:   NewHealthService(cfg.Version),
 		Greeting: NewGreetingService(cfg.Version, cfg.SecretKey),
 		User:     NewUserService(db, cfg.SecretKey),
+		Article:  NewArticleService(db, cfg.SecretKey),
 	}
 }

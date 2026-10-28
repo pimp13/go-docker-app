@@ -7,6 +7,7 @@ import (
 	"test/internal/config"
 	"test/internal/controller"
 	"test/internal/service"
+	appvalidator "test/pkg/validator"
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
@@ -30,11 +31,14 @@ func New(cfg config.AppConfig, db *gorm.DB) *App {
 	svcs := service.NewServices(cfg, db)
 	handlers := controller.NewHandlers(svcs)
 
+	engine := echo.New()
+	engine.Validator = appvalidator.New()
+
 	a := &App{
 		port:             cfg.Port,
 		prefix:           cfg.Prefix,
 		version:          cfg.Version,
-		engine:           echo.New(),
+		engine:           engine,
 		isProduction:     cfg.IsProduction,
 		healthCheckRoute: cfg.HealthCheckRoute,
 		cfg:              cfg,

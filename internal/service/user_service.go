@@ -6,17 +6,20 @@ import (
 	"strings"
 	"test/internal/dto"
 	"test/internal/model"
+	"test/pkg/token"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type UserService interface {
-	CreateUser(req dto.UserCreateRequest) (*dto.UserCreateResponse, error)
+	CreateUser(req dto.UserCreateRequest, meta map[string]any) (*dto.UserCreateResponse, error)
 
 	GetAllUsers() ([]model.User, error)
 
 	SecretKey() string
+
+	GetUserByID(id string) (*model.User, error)
 }
 
 type userService struct {
@@ -32,10 +35,22 @@ func (s *userService) SecretKey() string {
 	return s.secretKey
 }
 
-func (s *userService) CreateUser(req dto.UserCreateRequest) (*dto.UserCreateResponse, error) {
+func (s *userService) CreateUser(
+	req dto.UserCreateRequest,
+	meta map[string]any,
+) (*dto.UserCreateResponse, error) {
 	// نرمال‌سازی
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	req.Username = strings.ToLower(strings.TrimSpace(req.Username))
+
+	// Hash token using SHA-256
+	tokenStr, exists := meta["token"]
+	if exists {
+		meta["token"] = tokenStr.(string)
+		meta["token_hash"] = token.HashToken(tokenStr.(string))
+	} else {
+		return nil, errors.New("token is required")
+	}
 
 	// بررسی تکراری بودن ایمیل
 	var count int64
@@ -68,6 +83,7 @@ func (s *userService) CreateUser(req dto.UserCreateRequest) (*dto.UserCreateResp
 		Phone:     strings.TrimSpace(req.Phone),
 		Role:      model.UserRoleUser,
 		Status:    model.UserStatusActive,
+		Meta:      meta,
 	}
 
 	if err := s.db.Create(&user).Error; err != nil {
@@ -82,8 +98,16 @@ func (s *userService) CreateUser(req dto.UserCreateRequest) (*dto.UserCreateResp
 
 func (s *userService) GetAllUsers() ([]model.User, error) {
 	var users []model.User
-	if err := s.db.Find(&users).Error; err != nil {
+	if err := s.db.Order("created_at DESC").Find(&users).Error; err != nil {
 		return nil, fmt.Errorf("failed to get all users: %v", err)
 	}
 	return users, nil
+}
+
+func (s *userService) GetUserByID(id string) (*model.User, error) {
+	var user model.User
+	if err := s.db.Where("id = ?", id).First(&user).Error; err != nil {
+		return nil, fmt.Errorf("failed to get user by id: %v", err)
+	}
+	return &user, nil
 }

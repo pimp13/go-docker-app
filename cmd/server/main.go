@@ -35,7 +35,7 @@ func main() {
 		log.Fatalf("PostgreSQL is not reachable: %v", err)
 	}
 
-	// if err := db.AutoMigrate(&model.User{}); err != nil {
+	// if err := db.AutoMigrate(&model.Article{}, &model.Tag{}); err != nil {
 	// 	log.Fatalf("migrate user model: %v", err)
 	// }
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -28,16 +29,17 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	FirstName string     `gorm:"size:100;not null" json:"first_name"`
-	LastName  string     `gorm:"size:100;not null" json:"last_name"`
-	Email     string     `gorm:"size:255;not null;uniqueIndex" json:"email"`
-	Username  string     `gorm:"size:50;uniqueIndex" json:"username,omitempty"`
-	Password  string     `gorm:"size:255;not null" json:"-"`
-	Phone     string     `gorm:"size:20" json:"phone,omitempty"`
-	Avatar    string     `gorm:"size:500" json:"avatar,omitempty"`
-	Role      UserRole   `gorm:"type:varchar(20);default:'user';not null" json:"role"`
-	Status    UserStatus `gorm:"type:varchar(20);default:'active';not null" json:"status"`
-	LastLogin *time.Time `json:"last_login,omitempty"`
+	FirstName string            `gorm:"size:100;not null" json:"first_name"`
+	LastName  string            `gorm:"size:100;not null" json:"last_name"`
+	Email     string            `gorm:"size:255;not null;uniqueIndex" json:"email"`
+	Username  string            `gorm:"size:50;uniqueIndex" json:"username,omitempty"`
+	Password  string            `gorm:"size:255;not null" json:"-"`
+	Phone     string            `gorm:"size:20" json:"phone,omitempty"`
+	Avatar    string            `gorm:"size:500" json:"avatar,omitempty"`
+	Role      UserRole          `gorm:"type:varchar(20);default:'user';not null" json:"role"`
+	Status    UserStatus        `gorm:"type:varchar(20);default:'active';not null" json:"status"`
+	LastLogin *time.Time        `json:"last_login,omitempty"`
+	Meta      datatypes.JSONMap `gorm:"type:jsonb;not null;default:'{}'" json:"meta"`
 }
 
 // TableName تنظیم نام جدول (اختیاری)

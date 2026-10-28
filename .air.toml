@@ -6,7 +6,7 @@ testdata_dir = "testdata"
 
 [build]
   bin = "./tmp/main"
-  cmd = "go build -o ./tmp/main ./cmd/server"
+  cmd = "go build -buildvcs=false -o ./tmp/main ./cmd/server"
   delay = 1000
   entrypoint = ["./tmp/main"]
   exclude_dir = ["assets", "tmp", "vendor", "testdata", ".git"]

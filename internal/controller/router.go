@@ -25,7 +25,7 @@ type Handlers struct {
 func NewHandlers(cfg *config.Config, svcs *service.Services) *Handlers {
 	return &Handlers{
 		Health:   NewHealthController(svcs.Health),
-		Greeting: NewGreetingController(svcs.Greeting),
+		Greeting: NewGreetingController(svcs.Greeting, cfg.App.Version),
 		User:     NewUserController(svcs.User),
 		Article:  NewArticleController(svcs.Article),
 		Auth:     NewAuthController(svcs.Auth, cfg.Auth),

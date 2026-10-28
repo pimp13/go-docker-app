@@ -13,11 +13,12 @@ import (
 // GreetingController handles greeting-related HTTP endpoints.
 type GreetingController struct {
 	greeting service.GreetingService
+	version  string
 }
 
 // NewGreetingController injects GreetingService into the controller.
-func NewGreetingController(greeting service.GreetingService) *GreetingController {
-	return &GreetingController{greeting: greeting}
+func NewGreetingController(greeting service.GreetingService, version string) *GreetingController {
+	return &GreetingController{greeting: greeting, version: version}
 }
 
 // Register mounts greeting routes onto the given API group.
@@ -30,7 +31,13 @@ func (c *GreetingController) Register(api *echo.Group) {
 
 // Hello returns a default greeting.
 func (c *GreetingController) Hello(ctx *echo.Context) error {
-	return ctx.JSON(http.StatusOK, c.greeting.Hello())
+	return ctx.JSON(http.StatusOK, map[string]any{
+		"success":   true,
+		"message":   "Server is up!",
+		"version":   c.version,
+		"IP":        ctx.RealIP(),
+		"userAgent": ctx.Request().UserAgent(),
+	})
 }
 
 // HelloName returns a personalized greeting.

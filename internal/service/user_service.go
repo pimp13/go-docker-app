@@ -6,7 +6,6 @@ import (
 	"strings"
 	"test/internal/dto"
 	"test/internal/model"
-	"test/pkg/token"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -39,20 +38,21 @@ func (s *userService) CreateUser(
 	req dto.UserCreateRequest,
 	meta map[string]any,
 ) (*dto.UserCreateResponse, error) {
-	// نرمال‌سازی
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	req.Username = strings.ToLower(strings.TrimSpace(req.Username))
 
-	// Hash token using SHA-256
-	tokenStr, exists := meta["token"]
-	if exists {
-		meta["token"] = tokenStr.(string)
-		meta["token_hash"] = token.HashToken(tokenStr.(string))
-	} else {
-		return nil, errors.New("token is required")
+	if meta == nil {
+		meta = map[string]any{}
 	}
 
-	// بررسی تکراری بودن ایمیل
+	var defaultRole model.Role
+	if err := s.db.Where("slug = ?", model.RoleSlugUser).Take(&defaultRole).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrDefaultRoleMissing
+		}
+		return nil, err
+	}
+
 	var count int64
 	if err := s.db.Model(&model.User{}).Where("email = ?", req.Email).Count(&count).Error; err != nil {
 		return nil, err
@@ -61,7 +61,6 @@ func (s *userService) CreateUser(
 		return nil, errors.New("email already exists")
 	}
 
-	// بررسی تکراری بودن یوزرنیم (اگر ارسال شده باشد)
 	if req.Username != "" {
 		count = 0
 		if err := s.db.Model(&model.User{}).Where("username = ?", req.Username).Count(&count).Error; err != nil {
@@ -72,7 +71,6 @@ func (s *userService) CreateUser(
 		}
 	}
 
-	// ساخت یوزر
 	user := model.User{
 		ID:        uuid.New(),
 		FirstName: strings.TrimSpace(req.FirstName),
@@ -81,12 +79,16 @@ func (s *userService) CreateUser(
 		Username:  req.Username,
 		Password:  req.Password,
 		Phone:     strings.TrimSpace(req.Phone),
-		Role:      model.UserRoleUser,
+		RoleID:    defaultRole.ID,
 		Status:    model.UserStatusActive,
 		Meta:      meta,
 	}
 
-	if err := s.db.Create(&user).Error; err != nil {
+	create := s.db
+	if req.Username == "" {
+		create = create.Omit("Username")
+	}
+	if err := create.Create(&user).Error; err != nil {
 		return nil, err
 	}
 
@@ -98,7 +100,7 @@ func (s *userService) CreateUser(
 
 func (s *userService) GetAllUsers() ([]model.User, error) {
 	var users []model.User
-	if err := s.db.Order("created_at DESC").Find(&users).Error; err != nil {
+	if err := s.db.Preload("Role.Permissions").Order("created_at DESC").Find(&users).Error; err != nil {
 		return nil, fmt.Errorf("failed to get all users: %v", err)
 	}
 	return users, nil
@@ -106,7 +108,7 @@ func (s *userService) GetAllUsers() ([]model.User, error) {
 
 func (s *userService) GetUserByID(id string) (*model.User, error) {
 	var user model.User
-	if err := s.db.Where("id = ?", id).First(&user).Error; err != nil {
+	if err := s.db.Preload("Role.Permissions").Where("id = ?", id).First(&user).Error; err != nil {
 		return nil, fmt.Errorf("failed to get user by id: %v", err)
 	}
 	return &user, nil

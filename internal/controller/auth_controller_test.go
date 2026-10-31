@@ -162,6 +162,71 @@ func TestMeRequiresAuthCookie(t *testing.T) {
 	}
 }
 
+func TestRequirePermissionRejectsMissingCapability(t *testing.T) {
+	engine := echo.New()
+	engine.Validator = appvalidator.New()
+	auth := controller.NewAuthController(&stubAuth{
+		session: dto.Session{
+			User: dto.AuthUser{
+				ID:          "user-1",
+				Email:       "ada@example.com",
+				Role:        "user",
+				Permissions: []string{"articles:read"},
+			},
+		},
+	}, config.AuthConfig{
+		CookieName:     testCookieName,
+		CookiePath:     "/",
+		CookieSameSite: "lax",
+		TokenTTL:       time.Hour,
+	})
+
+	api := engine.Group("/api")
+	api.GET("/secure", func(ctx *echo.Context) error {
+		return ctx.JSON(http.StatusOK, map[string]string{"ok": "1"})
+	}, auth.RequireAuth, auth.RequirePermission("articles:create"))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/secure", nil)
+	req.AddCookie(&http.Cookie{Name: testCookieName, Value: "header.payload.signature"})
+	rec := httptest.NewRecorder()
+	engine.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestRequirePermissionAllowsMatchingCapability(t *testing.T) {
+	engine := echo.New()
+	auth := controller.NewAuthController(&stubAuth{
+		session: dto.Session{
+			User: dto.AuthUser{
+				ID:          "user-1",
+				Email:       "ada@example.com",
+				Role:        "editor",
+				Permissions: []string{"articles:read", "articles:create"},
+			},
+		},
+	}, config.AuthConfig{
+		CookieName:     testCookieName,
+		CookiePath:     "/",
+		CookieSameSite: "lax",
+		TokenTTL:       time.Hour,
+	})
+
+	api := engine.Group("/api")
+	api.GET("/secure", func(ctx *echo.Context) error {
+		return ctx.JSON(http.StatusOK, map[string]string{"ok": "1"})
+	}, auth.RequireAuth, auth.RequirePermission("articles:create"))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/secure", nil)
+	req.Header.Set("Authorization", "Bearer header.payload.signature")
+	rec := httptest.NewRecorder()
+	engine.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestMeAcceptsBearerWhenCookieIsMissing(t *testing.T) {
 	auth := &stubAuth{
 		session: dto.Session{User: dto.AuthUser{ID: "user-1", Email: "ada@example.com"}},

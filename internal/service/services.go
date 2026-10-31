@@ -13,18 +13,17 @@ type Services struct {
 	User     UserService
 	Article  ArticleService
 	Auth     AuthService
+	RBAC     RBACService
 }
 
 // NewServices wires concrete service implementations.
-// Pass db so future services (users, auth, …) can depend on it.
 func NewServices(cfg *config.Config, db *gorm.DB) *Services {
-	_ = db // reserved for domain services that need persistence
-
 	return &Services{
 		Health:   NewHealthService(cfg.App.Version),
 		Greeting: NewGreetingService(cfg.App.Version, cfg.App.SecretKey),
 		User:     NewUserService(db, cfg.App.SecretKey),
 		Article:  NewArticleService(db, cfg.App.SecretKey),
 		Auth:     NewAuthService(db, cfg),
+		RBAC:     NewRBACService(db),
 	}
 }

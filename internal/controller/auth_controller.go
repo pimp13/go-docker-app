@@ -134,6 +134,23 @@ func (c *AuthController) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+// RequirePermission ensures the authenticated user has every listed permission.
+// Always register after RequireAuth.
+func (c *AuthController) RequirePermission(codes ...string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(ctx *echo.Context) error {
+			user, err := currentAuthUser(ctx)
+			if err != nil {
+				return response.Unauthorized(ctx, err)
+			}
+			if !user.HasAllPermissions(codes...) {
+				return response.Forbidden(ctx, service.ErrPermissionDenied)
+			}
+			return next(ctx)
+		}
+	}
+}
+
 func (c *AuthController) tokenFromRequest(ctx *echo.Context) (string, error) {
 	if cookie, err := ctx.Cookie(c.cfg.CookieName); err == nil {
 		if token := strings.TrimSpace(cookie.Value); token != "" {
@@ -200,7 +217,8 @@ func writeAuthError(ctx *echo.Context, err error) error {
 		errors.Is(err, service.ErrTokenExpired),
 		errors.Is(err, service.ErrUnauthenticated):
 		return response.Unauthorized(ctx, err)
-	case errors.Is(err, service.ErrAccountDisabled):
+	case errors.Is(err, service.ErrAccountDisabled),
+		errors.Is(err, service.ErrPermissionDenied):
 		return response.Forbidden(ctx, err)
 	case errors.Is(err, service.ErrEmailTaken),
 		errors.Is(err, service.ErrUsernameTaken):

@@ -3,36 +3,29 @@ package controller
 import (
 	"errors"
 	"test/internal/dto"
+	"test/internal/model"
 	"test/internal/service"
 	"test/pkg/response"
-	"test/pkg/token"
 
 	"github.com/labstack/echo/v5"
 )
 
 type ArticleController struct {
 	articleService service.ArticleService
+	auth           *AuthController
 }
 
-func NewArticleController(articleService service.ArticleService) *ArticleController {
-	return &ArticleController{articleService}
+func NewArticleController(articleService service.ArticleService, auth *AuthController) *ArticleController {
+	return &ArticleController{articleService: articleService, auth: auth}
 }
 
 func (c *ArticleController) Register(api *echo.Group) {
-	api.GET("/articles", c.GetArticles)
-	api.POST("/articles/create", c.CreateArticle)
-	api.GET("/articles/:id", c.GetArticleByID)
+	api.GET("/articles", c.GetArticles, c.auth.RequireAuth, c.auth.RequirePermission(model.PermArticlesRead))
+	api.POST("/articles/create", c.CreateArticle, c.auth.RequireAuth, c.auth.RequirePermission(model.PermArticlesCreate))
+	api.GET("/articles/:id", c.GetArticleByID, c.auth.RequireAuth, c.auth.RequirePermission(model.PermArticlesRead))
 }
 
 func (c *ArticleController) CreateArticle(ctx *echo.Context) error {
-	tk := token.ExtractToken(ctx)
-	if tk == "" {
-		return response.Unauthorized(ctx, errors.New("token is required"))
-	}
-	if err := token.ValidateToken(tk, c.articleService.SecretKey()); err != nil {
-		return response.Unauthorized(ctx, err)
-	}
-
 	var bodyData dto.CreateArticleRequest
 	if err := ctx.Bind(&bodyData); err != nil {
 		return response.BadRequest(ctx, err)
@@ -51,14 +44,6 @@ func (c *ArticleController) CreateArticle(ctx *echo.Context) error {
 }
 
 func (c *ArticleController) GetArticles(ctx *echo.Context) error {
-	tk := token.ExtractToken(ctx)
-	if tk == "" {
-		return response.Unauthorized(ctx, errors.New("token is required"))
-	}
-	if err := token.ValidateToken(tk, c.articleService.SecretKey()); err != nil {
-		return response.Unauthorized(ctx, err)
-	}
-
 	result, err := c.articleService.GetArticles()
 	if err != nil {
 		return response.InternalServerError(ctx, err)
@@ -68,14 +53,6 @@ func (c *ArticleController) GetArticles(ctx *echo.Context) error {
 }
 
 func (c *ArticleController) GetArticleByID(ctx *echo.Context) error {
-	tk := token.ExtractToken(ctx)
-	if tk == "" {
-		return response.Unauthorized(ctx, errors.New("token is required"))
-	}
-	if err := token.ValidateToken(tk, c.articleService.SecretKey()); err != nil {
-		return response.Unauthorized(ctx, err)
-	}
-
 	id := ctx.Param("id")
 	if id == "" {
 		return response.BadRequest(ctx, errors.New("id is required"))

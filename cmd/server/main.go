@@ -9,6 +9,7 @@ import (
 
 	"test/internal/app"
 	"test/internal/config"
+	"test/internal/rbac"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -38,9 +39,9 @@ func main() {
 		log.Fatalf("PostgreSQL is not reachable: %v", err)
 	}
 
-	// if err := db.AutoMigrate(&model.Article{}, &model.Tag{}); err != nil {
-	// 	log.Fatalf("migrate user model: %v", err)
-	// }
+	if err := rbac.Setup(db); err != nil {
+		log.Fatalf("setup rbac: %v", err)
+	}
 
 	log.Println("Connected to PostgreSQL successfully!")
 

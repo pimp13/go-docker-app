@@ -23,14 +23,35 @@ type ChangePasswordRequest struct {
 
 // AuthUser is the public profile returned by auth endpoints.
 type AuthUser struct {
-	ID        string `json:"id"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
-	Username  string `json:"username,omitempty"`
-	Phone     string `json:"phone,omitempty"`
-	Role      string `json:"role"`
-	Status    string `json:"status"`
+	ID          string   `json:"id"`
+	FirstName   string   `json:"first_name"`
+	LastName    string   `json:"last_name"`
+	Email       string   `json:"email"`
+	Username    string   `json:"username,omitempty"`
+	Phone       string   `json:"phone,omitempty"`
+	Role        string   `json:"role"`
+	Permissions []string `json:"permissions"`
+	Status      string   `json:"status"`
+}
+
+// HasPermission reports whether the authenticated user includes the code.
+func (u AuthUser) HasPermission(code string) bool {
+	for _, p := range u.Permissions {
+		if p == code {
+			return true
+		}
+	}
+	return false
+}
+
+// HasAllPermissions reports whether every required code is present.
+func (u AuthUser) HasAllPermissions(codes ...string) bool {
+	for _, code := range codes {
+		if !u.HasPermission(code) {
+			return false
+		}
+	}
+	return true
 }
 
 // Session is the result of a successful login or password change.

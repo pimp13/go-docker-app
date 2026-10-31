@@ -32,6 +32,7 @@ var (
 	ErrPasswordUnchanged  = errors.New("new password must be different from the current password")
 	ErrInvalidInput       = errors.New("invalid input")
 	ErrInvalidPassword    = errors.New("password must be between 8 and 72 characters")
+	ErrDefaultRoleMissing = errors.New("default user role is not configured")
 )
 
 // dummyPasswordHash is a valid bcrypt hash used only so a missing account
@@ -59,6 +60,14 @@ func (s *authService) Register(ctx context.Context, req dto.RegisterRequest) (dt
 		return dto.AuthUser{}, err
 	}
 
+	defaultRole, err := s.findRoleBySlug(ctx, model.RoleSlugUser)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.AuthUser{}, ErrDefaultRoleMissing
+		}
+		return dto.AuthUser{}, err
+	}
+
 	user := model.User{
 		ID:        uuid.New(),
 		FirstName: req.FirstName,
@@ -67,12 +76,13 @@ func (s *authService) Register(ctx context.Context, req dto.RegisterRequest) (dt
 		Username:  req.Username,
 		Password:  req.Password,
 		Phone:     req.Phone,
-		Role:      model.UserRoleUser,
+		RoleID:    defaultRole.ID,
+		Role:      defaultRole,
 		Status:    model.UserStatusActive,
 		Meta:      datatypes.JSONMap{},
 	}
 
-	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var count int64
 		if err := tx.Model(&model.User{}).Where("email = ?", req.Email).Count(&count).Error; err != nil {
 			return err
@@ -95,7 +105,7 @@ func (s *authService) Register(ctx context.Context, req dto.RegisterRequest) (dt
 		if req.Username == "" {
 			create = tx.Omit("Username")
 		}
-		if err := create.Create(&user).Error; err != nil {
+		if err := create.Omit("Role").Create(&user).Error; err != nil {
 			return mapUniqueViolation(err)
 		}
 		return nil
@@ -213,7 +223,7 @@ func (s *authService) issue(user model.User) (dto.Session, error) {
 		Secret:              s.cfg.Auth.JWTSecret,
 		Issuer:              s.cfg.Auth.JWTIssuer,
 		Subject:             user.ID.String(),
-		Role:                string(user.Role),
+		Role:                user.Role.Slug,
 		PasswordFingerprint: passwordFingerprint(user.Password),
 		TTL:                 s.cfg.Auth.TokenTTL,
 	})
@@ -230,14 +240,29 @@ func (s *authService) issue(user model.User) (dto.Session, error) {
 
 func (s *authService) findByEmail(ctx context.Context, email string) (model.User, error) {
 	var user model.User
-	err := s.db.WithContext(ctx).Where("email = ?", email).Take(&user).Error
+	err := s.db.WithContext(ctx).
+		Preload("Role.Permissions").
+		Where("email = ?", email).
+		Take(&user).Error
 	return user, err
 }
 
 func (s *authService) findByID(ctx context.Context, id uuid.UUID) (model.User, error) {
 	var user model.User
-	err := s.db.WithContext(ctx).Where("id = ?", id).Take(&user).Error
+	err := s.db.WithContext(ctx).
+		Preload("Role.Permissions").
+		Where("id = ?", id).
+		Take(&user).Error
 	return user, err
+}
+
+func (s *authService) findRoleBySlug(ctx context.Context, slug string) (model.Role, error) {
+	var role model.Role
+	err := s.db.WithContext(ctx).
+		Preload("Permissions").
+		Where("slug = ?", slug).
+		Take(&role).Error
+	return role, err
 }
 
 func normalizeRegister(req *dto.RegisterRequest) error {
@@ -263,14 +288,15 @@ func validPassword(password string) bool {
 
 func toAuthUser(user model.User) dto.AuthUser {
 	return dto.AuthUser{
-		ID:        user.ID.String(),
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Email:     user.Email,
-		Username:  user.Username,
-		Phone:     user.Phone,
-		Role:      string(user.Role),
-		Status:    string(user.Status),
+		ID:          user.ID.String(),
+		FirstName:   user.FirstName,
+		LastName:    user.LastName,
+		Email:       user.Email,
+		Username:    user.Username,
+		Phone:       user.Phone,
+		Role:        user.Role.Slug,
+		Permissions: user.Role.PermissionCodes(),
+		Status:      string(user.Status),
 	}
 }
 

@@ -23,12 +23,13 @@ type Handlers struct {
 
 // NewHandlers builds controllers from the service container.
 func NewHandlers(cfg *config.Config, svcs *service.Services) *Handlers {
+	auth := NewAuthController(svcs.Auth, cfg.Auth)
 	return &Handlers{
 		Health:   NewHealthController(svcs.Health),
 		Greeting: NewGreetingController(svcs.Greeting, cfg.App.Version),
-		User:     NewUserController(svcs.User),
-		Article:  NewArticleController(svcs.Article),
-		Auth:     NewAuthController(svcs.Auth, cfg.Auth),
+		Auth:     auth,
+		User:     NewUserController(svcs.User, auth),
+		Article:  NewArticleController(svcs.Article, auth),
 	}
 }
 

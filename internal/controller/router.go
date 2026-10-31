@@ -14,22 +14,24 @@ type Registrar interface {
 
 // Handlers holds all HTTP controllers (constructor-injected).
 type Handlers struct {
-	Health   *HealthController
-	Greeting *GreetingController
-	User     *UserController
-	Article  *ArticleController
-	Auth     *AuthController
+	Health    *HealthController
+	Greeting  *GreetingController
+	User      *UserController
+	Article   *ArticleController
+	Auth      *AuthController
+	AdminRBAC *AdminRBACController
 }
 
 // NewHandlers builds controllers from the service container.
 func NewHandlers(cfg *config.Config, svcs *service.Services) *Handlers {
 	auth := NewAuthController(svcs.Auth, cfg.Auth)
 	return &Handlers{
-		Health:   NewHealthController(svcs.Health),
-		Greeting: NewGreetingController(svcs.Greeting, cfg.App.Version),
-		Auth:     auth,
-		User:     NewUserController(svcs.User, auth),
-		Article:  NewArticleController(svcs.Article, auth),
+		Health:    NewHealthController(svcs.Health),
+		Greeting:  NewGreetingController(svcs.Greeting, cfg.App.Version),
+		Auth:      auth,
+		User:      NewUserController(svcs.User, auth),
+		Article:   NewArticleController(svcs.Article, auth),
+		AdminRBAC: NewAdminRBACController(svcs.RBAC, auth),
 	}
 }
 
@@ -43,6 +45,7 @@ func Register(e *echo.Echo, cfg config.AppConfig, h *Handlers) {
 	registerAPI(api, h.User)
 	registerAPI(api, h.Article)
 	registerAPI(api, h.Auth)
+	registerAPI(api, h.AdminRBAC)
 }
 
 func registerAPI(api *echo.Group, registrars ...Registrar) {

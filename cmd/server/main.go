@@ -9,12 +9,38 @@ import (
 
 	"test/internal/app"
 	"test/internal/config"
-	"test/internal/rbac"
+	"test/internal/seed"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	_ "test/docs" // swagger generated docs
 )
+
+// @title                       Funlife API
+// @version                     0.1.0
+// @description                 General and admin HTTP APIs for auth, users, articles, and RBAC.
+// @termsOfService              http://swagger.io/terms/
+
+// @contact.name                API Support
+// @contact.email               support@example.com
+
+// @license.name                Apache 2.0
+// @license.url                 http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host                        localhost:8080
+// @BasePath                    /
+
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
+// @description                 JWT access token. Example: Bearer {token}
+
+// @securityDefinitions.apikey  CookieAuth
+// @in                          cookie
+// @name                        auth_token
+// @description                 JWT stored in the auth cookie after login
 
 func main() {
 	cfg, err := config.GetInstance()
@@ -39,7 +65,7 @@ func main() {
 		log.Fatalf("PostgreSQL is not reachable: %v", err)
 	}
 
-	if err := rbac.Setup(db); err != nil {
+	if err := seed.Setup(db); err != nil {
 		log.Fatalf("setup rbac: %v", err)
 	}
 
@@ -51,6 +77,7 @@ func main() {
 	defer stop()
 
 	log.Printf("starting server on %s (version %s)", cfg.App.Address(), cfg.App.Version)
+	log.Printf("swagger UI available at http://localhost%s/swagger/index.html", cfg.App.Address())
 
 	if err := application.Run(ctx); err != nil {
 		log.Fatalf("server stopped: %v", err)

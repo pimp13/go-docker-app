@@ -1,0 +1,869 @@
+basePath: /
+definitions:
+  internal_admin_rbac.CreateRoleRequest:
+    properties:
+      description:
+        maxLength: 255
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      permission_codes:
+        items:
+          type: string
+        type: array
+      slug:
+        maxLength: 50
+        minLength: 2
+        type: string
+    required:
+    - name
+    - permission_codes
+    - slug
+    type: object
+  internal_admin_rbac.SetRolePermissionsRequest:
+    properties:
+      permission_codes:
+        items:
+          type: string
+        type: array
+    required:
+    - permission_codes
+    type: object
+  internal_admin_rbac.UpdateRoleRequest:
+    properties:
+      description:
+        maxLength: 255
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+    required:
+    - name
+    type: object
+  test_internal_dto.ChangePasswordRequest:
+    properties:
+      current_password:
+        maxLength: 72
+        type: string
+      new_password:
+        maxLength: 72
+        minLength: 8
+        type: string
+    required:
+    - current_password
+    - new_password
+    type: object
+  test_internal_dto.CreateArticleRequest:
+    properties:
+      author_id:
+        type: string
+      content:
+        maxLength: 255
+        minLength: 3
+        type: string
+      cover_image:
+        maxLength: 255
+        minLength: 3
+        type: string
+      excerpt:
+        maxLength: 255
+        minLength: 3
+        type: string
+      meta:
+        additionalProperties: {}
+        type: object
+      published_at:
+        type: string
+      slug:
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/test_internal_model.ArticleStatus'
+        maxLength: 255
+        minLength: 3
+      title:
+        maxLength: 255
+        minLength: 3
+        type: string
+    required:
+    - author_id
+    - content
+    - cover_image
+    - excerpt
+    - status
+    - title
+    type: object
+  test_internal_dto.LoginRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      password:
+        maxLength: 72
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  test_internal_dto.RegisterRequest:
+    properties:
+      email:
+        maxLength: 255
+        type: string
+      first_name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      last_name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      password:
+        maxLength: 72
+        minLength: 8
+        type: string
+      phone:
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - email
+    - first_name
+    - last_name
+    - password
+    type: object
+  test_internal_dto.UserCreateRequest:
+    properties:
+      email:
+        type: string
+      first_name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      last_name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      password:
+        minLength: 8
+        type: string
+      phone:
+        type: string
+      username:
+        maxLength: 50
+        minLength: 3
+        type: string
+    required:
+    - email
+    - first_name
+    - last_name
+    - password
+    type: object
+  test_internal_model.ArticleStatus:
+    enum:
+    - draft
+    - published
+    - archived
+    type: string
+    x-enum-varnames:
+    - ArticleStatusDraft
+    - ArticleStatusPublished
+    - ArticleStatusArchived
+  test_internal_service.HealthStatus:
+    properties:
+      status:
+        type: string
+      version:
+        type: string
+    type: object
+  test_pkg_response.APIResponse:
+    properties:
+      result:
+        $ref: '#/definitions/test_pkg_response.Result'
+    type: object
+  test_pkg_response.ErrorDetails:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+  test_pkg_response.RequestDetails:
+    properties:
+      ip:
+        type: string
+      user_agent:
+        type: string
+    type: object
+  test_pkg_response.Result:
+    properties:
+      data: {}
+      error:
+        $ref: '#/definitions/test_pkg_response.ErrorDetails'
+      request:
+        $ref: '#/definitions/test_pkg_response.RequestDetails'
+      success:
+        type: boolean
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: General and admin HTTP APIs for auth, users, articles, and RBAC.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Funlife API
+  version: 0.1.0
+paths:
+  /api:
+    get:
+      description: Simple readiness payload for the API prefix
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: API root status
+      tags:
+      - general
+  /api/:
+    get:
+      description: Simple readiness payload for the API prefix
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: API root status
+      tags:
+      - general
+  /api/admin/rbac/permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: List permissions
+      tags:
+      - admin-rbac
+  /api/admin/rbac/roles:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: List roles
+      tags:
+      - admin-rbac
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_admin_rbac.CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Create role
+      tags:
+      - admin-rbac
+  /api/admin/rbac/roles/{id}:
+    delete:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Delete role
+      tags:
+      - admin-rbac
+    get:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get role by ID
+      tags:
+      - admin-rbac
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_admin_rbac.UpdateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Update role
+      tags:
+      - admin-rbac
+  /api/admin/rbac/roles/{id}/permissions:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Permission codes
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_admin_rbac.SetRolePermissionsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Set role permissions
+      tags:
+      - admin-rbac
+  /api/articles:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: List articles
+      tags:
+      - articles
+  /api/articles/{id}:
+    get:
+      parameters:
+      - description: Article ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get article by ID
+      tags:
+      - articles
+  /api/articles/create:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Article payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/test_internal_dto.CreateArticleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Create article
+      tags:
+      - articles
+  /api/auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Changes password and refreshes the auth cookie/token
+      parameters:
+      - description: Password change payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/test_internal_dto.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Change password
+      tags:
+      - auth
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates the user and sets the JWT auth cookie
+      parameters:
+      - description: Login payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/test_internal_dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              description: auth_token cookie containing JWT
+              type: string
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      summary: Login
+      tags:
+      - auth
+  /api/auth/logout:
+    post:
+      description: Clears the auth cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      summary: Logout
+      tags:
+      - auth
+  /api/auth/me:
+    get:
+      description: Returns the authenticated user profile and permissions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Current user
+      tags:
+      - auth
+  /api/auth/sign-up:
+    post:
+      consumes:
+      - application/json
+      description: Creates a user with the default role
+      parameters:
+      - description: Registration payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/test_internal_dto.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      summary: Register a new user
+      tags:
+      - auth
+  /api/hello/{name}:
+    get:
+      parameters:
+      - description: Name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      summary: Personalized greeting
+      tags:
+      - general
+  /api/my-token:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      summary: Generate development token
+      tags:
+      - general
+  /api/users/create:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/test_internal_dto.UserCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Create user
+      tags:
+      - users
+  /api/users/get-all:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: List users
+      tags:
+      - users
+  /api/users/get-by-id/{id}:
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get user by ID
+      tags:
+      - users
+  /health:
+    get:
+      description: Returns service readiness status and version
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_internal_service.HealthStatus'
+      summary: Health check
+      tags:
+      - general
+securityDefinitions:
+  BearerAuth:
+    description: 'JWT access token. Example: Bearer {token}'
+    in: header
+    name: Authorization
+    type: apiKey
+  CookieAuth:
+    description: JWT stored in the auth cookie after login
+    in: cookie
+    name: auth_token
+    type: apiKey
+swagger: "2.0"

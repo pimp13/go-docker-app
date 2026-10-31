@@ -13,7 +13,6 @@ type Services struct {
 	User     UserService
 	Article  ArticleService
 	Auth     AuthService
-	RBAC     RBACService
 }
 
 // NewServices wires concrete service implementations.
@@ -24,6 +23,5 @@ func NewServices(cfg *config.Config, db *gorm.DB) *Services {
 		User:     NewUserService(db, cfg.App.SecretKey),
 		Article:  NewArticleService(db, cfg.App.SecretKey),
 		Auth:     NewAuthService(db, cfg),
-		RBAC:     NewRBACService(db),
 	}
 }

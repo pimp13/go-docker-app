@@ -25,6 +25,20 @@ func (c *UserController) Register(api *echo.Group) {
 	api.GET("/users/get-by-id/:id", c.GetUserByID, c.auth.RequireAuth, c.auth.RequirePermission(model.PermUsersRead))
 }
 
+// CreateUser creates a user (admin/staff capability).
+//
+//	@Summary		Create user
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Security		CookieAuth
+//	@Param			body	body		dto.UserCreateRequest	true	"User payload"
+//	@Success		200		{object}	response.APIResponse
+//	@Failure		400		{object}	response.APIResponse
+//	@Failure		401		{object}	response.APIResponse
+//	@Failure		403		{object}	response.APIResponse
+//	@Router			/api/users/create [post]
 func (c *UserController) CreateUser(ctx *echo.Context) error {
 	var req dto.UserCreateRequest
 	if err := ctx.Bind(&req); err != nil {
@@ -45,6 +59,17 @@ func (c *UserController) CreateUser(ctx *echo.Context) error {
 	return response.OK(ctx, result)
 }
 
+// GetAllUsers lists users.
+//
+//	@Summary		List users
+//	@Tags			users
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Security		CookieAuth
+//	@Success		200	{object}	response.APIResponse
+//	@Failure		401	{object}	response.APIResponse
+//	@Failure		403	{object}	response.APIResponse
+//	@Router			/api/users/get-all [get]
 func (c *UserController) GetAllUsers(ctx *echo.Context) error {
 	users, err := c.userService.GetAllUsers()
 	if err != nil {
@@ -53,6 +78,19 @@ func (c *UserController) GetAllUsers(ctx *echo.Context) error {
 	return response.OK(ctx, map[string]any{"users": users})
 }
 
+// GetUserByID returns one user.
+//
+//	@Summary		Get user by ID
+//	@Tags			users
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Security		CookieAuth
+//	@Param			id	path		string	true	"User ID"
+//	@Success		200	{object}	response.APIResponse
+//	@Failure		400	{object}	response.APIResponse
+//	@Failure		401	{object}	response.APIResponse
+//	@Failure		403	{object}	response.APIResponse
+//	@Router			/api/users/get-by-id/{id} [get]
 func (c *UserController) GetUserByID(ctx *echo.Context) error {
 	id := ctx.Param("id")
 	if id == "" {

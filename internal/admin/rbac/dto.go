@@ -1,4 +1,4 @@
-package dto
+package rbac
 
 type PermissionResponse struct {
 	ID          string `json:"id"`

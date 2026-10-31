@@ -29,7 +29,7 @@ type App struct {
 // New creates an App, builds the service/controller graph, and registers routes.
 func New(cfg *config.Config, db *gorm.DB) *App {
 	svcs := service.NewServices(cfg, db)
-	handlers := controller.NewHandlers(cfg, svcs)
+	handlers := controller.NewHandlers(cfg, svcs, db)
 
 	engine := echo.New()
 	engine.Validator = appvalidator.New()

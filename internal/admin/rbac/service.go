@@ -1,4 +1,4 @@
-package service
+package rbac
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"test/internal/dto"
 	"test/internal/model"
 
 	"github.com/google/uuid"
@@ -14,40 +13,28 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	ErrRoleNotFound        = errors.New("role not found")
-	ErrPermissionDenied    = errors.New("permission denied")
-	ErrPermissionNotFound  = errors.New("permission not found")
-	ErrRoleSlugTaken       = errors.New("role slug already exists")
-	ErrSystemRoleProtected = errors.New("system roles cannot be deleted")
-	ErrRoleInUse           = errors.New("role is assigned to one or more users")
-	ErrInvalidRoleSlug     = errors.New("role slug must be lowercase letters, numbers, hyphens, or underscores")
-)
-
 var roleSlugPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
 
-type RBACService interface {
-	ListPermissions(ctx context.Context) ([]dto.PermissionResponse, error)
-	ListRoles(ctx context.Context) ([]dto.RoleResponse, error)
-	GetRoleByID(ctx context.Context, id string) (dto.RoleResponse, error)
-	GetRoleBySlug(ctx context.Context, slug string) (model.Role, error)
-	CreateRole(ctx context.Context, req dto.CreateRoleRequest) (dto.RoleResponse, error)
-	UpdateRole(ctx context.Context, id string, req dto.UpdateRoleRequest) (dto.RoleResponse, error)
-	SetRolePermissions(ctx context.Context, id string, req dto.SetRolePermissionsRequest) (dto.RoleResponse, error)
+// Service manages roles and permissions for the admin panel.
+type Service interface {
+	ListPermissions(ctx context.Context) ([]PermissionResponse, error)
+	ListRoles(ctx context.Context) ([]RoleResponse, error)
+	GetRoleByID(ctx context.Context, id string) (RoleResponse, error)
+	CreateRole(ctx context.Context, req CreateRoleRequest) (RoleResponse, error)
+	UpdateRole(ctx context.Context, id string, req UpdateRoleRequest) (RoleResponse, error)
+	SetRolePermissions(ctx context.Context, id string, req SetRolePermissionsRequest) (RoleResponse, error)
 	DeleteRole(ctx context.Context, id string) error
-	UserHasPermission(ctx context.Context, userID uuid.UUID, code string) (bool, error)
-	UserHasAllPermissions(ctx context.Context, userID uuid.UUID, codes ...string) (bool, error)
 }
 
-type rbacService struct {
+type service struct {
 	db *gorm.DB
 }
 
-func NewRBACService(db *gorm.DB) RBACService {
-	return &rbacService{db: db}
+func NewService(db *gorm.DB) Service {
+	return &service{db: db}
 }
 
-func (s *rbacService) ListPermissions(ctx context.Context) ([]dto.PermissionResponse, error) {
+func (s *service) ListPermissions(ctx context.Context) ([]PermissionResponse, error) {
 	var permissions []model.Permission
 	if err := s.db.WithContext(ctx).Order("resource ASC, action ASC").Find(&permissions).Error; err != nil {
 		return nil, err
@@ -55,7 +42,7 @@ func (s *rbacService) ListPermissions(ctx context.Context) ([]dto.PermissionResp
 	return toPermissionResponses(permissions), nil
 }
 
-func (s *rbacService) ListRoles(ctx context.Context) ([]dto.RoleResponse, error) {
+func (s *service) ListRoles(ctx context.Context) ([]RoleResponse, error) {
 	var roles []model.Role
 	if err := s.db.WithContext(ctx).
 		Preload("Permissions", func(db *gorm.DB) *gorm.DB {
@@ -68,45 +55,33 @@ func (s *rbacService) ListRoles(ctx context.Context) ([]dto.RoleResponse, error)
 	return toRoleResponses(roles), nil
 }
 
-func (s *rbacService) GetRoleByID(ctx context.Context, id string) (dto.RoleResponse, error) {
+func (s *service) GetRoleByID(ctx context.Context, id string) (RoleResponse, error) {
 	roleID, err := uuid.Parse(id)
 	if err != nil {
-		return dto.RoleResponse{}, ErrRoleNotFound
+		return RoleResponse{}, ErrRoleNotFound
 	}
 
 	role, err := s.findRoleByID(ctx, roleID)
 	if err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 	return toRoleResponse(role), nil
 }
 
-func (s *rbacService) GetRoleBySlug(ctx context.Context, slug string) (model.Role, error) {
-	var role model.Role
-	err := s.db.WithContext(ctx).
-		Preload("Permissions").
-		Where("slug = ?", slug).
-		Take(&role).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return model.Role{}, ErrRoleNotFound
-	}
-	return role, err
-}
-
-func (s *rbacService) CreateRole(ctx context.Context, req dto.CreateRoleRequest) (dto.RoleResponse, error) {
+func (s *service) CreateRole(ctx context.Context, req CreateRoleRequest) (RoleResponse, error) {
 	slug, err := normalizeRoleSlug(req.Slug)
 	if err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 	name := strings.TrimSpace(req.Name)
 	description := strings.TrimSpace(req.Description)
 	if name == "" {
-		return dto.RoleResponse{}, ErrInvalidInput
+		return RoleResponse{}, ErrInvalidInput
 	}
 
 	permissions, err := s.findPermissionsByCodes(ctx, req.PermissionCodes)
 	if err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 
 	role := model.Role{
@@ -129,75 +104,75 @@ func (s *rbacService) CreateRole(ctx context.Context, req dto.CreateRoleRequest)
 		return nil
 	})
 	if err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 
 	stored, err := s.findRoleByID(ctx, role.ID)
 	if err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 	return toRoleResponse(stored), nil
 }
 
-func (s *rbacService) UpdateRole(ctx context.Context, id string, req dto.UpdateRoleRequest) (dto.RoleResponse, error) {
+func (s *service) UpdateRole(ctx context.Context, id string, req UpdateRoleRequest) (RoleResponse, error) {
 	roleID, err := uuid.Parse(id)
 	if err != nil {
-		return dto.RoleResponse{}, ErrRoleNotFound
+		return RoleResponse{}, ErrRoleNotFound
 	}
 
 	name := strings.TrimSpace(req.Name)
 	description := strings.TrimSpace(req.Description)
 	if name == "" {
-		return dto.RoleResponse{}, ErrInvalidInput
+		return RoleResponse{}, ErrInvalidInput
 	}
 
 	role, err := s.findRoleByID(ctx, roleID)
 	if err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 
 	if err := s.db.WithContext(ctx).Model(&role).Updates(map[string]any{
 		"name":        name,
 		"description": description,
 	}).Error; err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 
 	stored, err := s.findRoleByID(ctx, roleID)
 	if err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 	return toRoleResponse(stored), nil
 }
 
-func (s *rbacService) SetRolePermissions(ctx context.Context, id string, req dto.SetRolePermissionsRequest) (dto.RoleResponse, error) {
+func (s *service) SetRolePermissions(ctx context.Context, id string, req SetRolePermissionsRequest) (RoleResponse, error) {
 	roleID, err := uuid.Parse(id)
 	if err != nil {
-		return dto.RoleResponse{}, ErrRoleNotFound
+		return RoleResponse{}, ErrRoleNotFound
 	}
 
 	role, err := s.findRoleByID(ctx, roleID)
 	if err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 
 	permissions, err := s.findPermissionsByCodes(ctx, req.PermissionCodes)
 	if err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 
 	if err := s.db.WithContext(ctx).Model(&role).Association("Permissions").Replace(permissions); err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 
 	stored, err := s.findRoleByID(ctx, roleID)
 	if err != nil {
-		return dto.RoleResponse{}, err
+		return RoleResponse{}, err
 	}
 	return toRoleResponse(stored), nil
 }
 
-func (s *rbacService) DeleteRole(ctx context.Context, id string) error {
+func (s *service) DeleteRole(ctx context.Context, id string) error {
 	roleID, err := uuid.Parse(id)
 	if err != nil {
 		return ErrRoleNotFound
@@ -227,36 +202,7 @@ func (s *rbacService) DeleteRole(ctx context.Context, id string) error {
 	})
 }
 
-func (s *rbacService) UserHasPermission(ctx context.Context, userID uuid.UUID, code string) (bool, error) {
-	return s.UserHasAllPermissions(ctx, userID, code)
-}
-
-func (s *rbacService) UserHasAllPermissions(ctx context.Context, userID uuid.UUID, codes ...string) (bool, error) {
-	if len(codes) == 0 {
-		return true, nil
-	}
-
-	var user model.User
-	err := s.db.WithContext(ctx).
-		Preload("Role.Permissions").
-		Where("id = ?", userID).
-		Take(&user).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return false, ErrRoleNotFound
-	}
-	if err != nil {
-		return false, err
-	}
-
-	for _, code := range codes {
-		if !user.HasPermission(code) {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
-func (s *rbacService) findRoleByID(ctx context.Context, id uuid.UUID) (model.Role, error) {
+func (s *service) findRoleByID(ctx context.Context, id uuid.UUID) (model.Role, error) {
 	var role model.Role
 	err := s.db.WithContext(ctx).
 		Preload("Permissions", func(db *gorm.DB) *gorm.DB {
@@ -270,7 +216,7 @@ func (s *rbacService) findRoleByID(ctx context.Context, id uuid.UUID) (model.Rol
 	return role, err
 }
 
-func (s *rbacService) findPermissionsByCodes(ctx context.Context, codes []string) ([]model.Permission, error) {
+func (s *service) findPermissionsByCodes(ctx context.Context, codes []string) ([]model.Permission, error) {
 	normalized := uniqueNonEmpty(codes)
 	if len(normalized) == 0 {
 		return []model.Permission{}, nil
@@ -328,16 +274,16 @@ func mapRoleUniqueViolation(err error) error {
 	return err
 }
 
-func toRoleResponses(roles []model.Role) []dto.RoleResponse {
-	out := make([]dto.RoleResponse, 0, len(roles))
+func toRoleResponses(roles []model.Role) []RoleResponse {
+	out := make([]RoleResponse, 0, len(roles))
 	for _, role := range roles {
 		out = append(out, toRoleResponse(role))
 	}
 	return out
 }
 
-func toRoleResponse(role model.Role) dto.RoleResponse {
-	return dto.RoleResponse{
+func toRoleResponse(role model.Role) RoleResponse {
+	return RoleResponse{
 		ID:          role.ID.String(),
 		Slug:        role.Slug,
 		Name:        role.Name,
@@ -347,10 +293,10 @@ func toRoleResponse(role model.Role) dto.RoleResponse {
 	}
 }
 
-func toPermissionResponses(permissions []model.Permission) []dto.PermissionResponse {
-	out := make([]dto.PermissionResponse, 0, len(permissions))
+func toPermissionResponses(permissions []model.Permission) []PermissionResponse {
+	out := make([]PermissionResponse, 0, len(permissions))
 	for _, permission := range permissions {
-		out = append(out, dto.PermissionResponse{
+		out = append(out, PermissionResponse{
 			ID:          permission.ID.String(),
 			Code:        permission.Code,
 			Name:        permission.Name,

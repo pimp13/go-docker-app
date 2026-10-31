@@ -33,6 +33,7 @@ var (
 	ErrInvalidInput       = errors.New("invalid input")
 	ErrInvalidPassword    = errors.New("password must be between 8 and 72 characters")
 	ErrDefaultRoleMissing = errors.New("default user role is not configured")
+	ErrPermissionDenied   = errors.New("permission denied")
 )
 
 // dummyPasswordHash is a valid bcrypt hash used only so a missing account

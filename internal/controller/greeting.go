@@ -30,6 +30,14 @@ func (c *GreetingController) Register(api *echo.Group) {
 }
 
 // Hello returns a default greeting.
+//
+//	@Summary		API root status
+//	@Description	Simple readiness payload for the API prefix
+//	@Tags			general
+//	@Produce		json
+//	@Success		200	{object}	map[string]interface{}
+//	@Router			/api [get]
+//	@Router			/api/ [get]
 func (c *GreetingController) Hello(ctx *echo.Context) error {
 	return ctx.JSON(http.StatusOK, map[string]any{
 		"success":   true,
@@ -41,11 +49,26 @@ func (c *GreetingController) Hello(ctx *echo.Context) error {
 }
 
 // HelloName returns a personalized greeting.
+//
+//	@Summary		Personalized greeting
+//	@Tags			general
+//	@Produce		json
+//	@Param			name	path		string	true	"Name"
+//	@Success		200		{object}	response.APIResponse
+//	@Router			/api/hello/{name} [get]
 func (c *GreetingController) HelloName(ctx *echo.Context) error {
 	name := ctx.Param("name")
 	return response.OK(ctx, c.greeting.HelloName(name))
 }
 
+// MyToken generates a development token.
+//
+//	@Summary		Generate development token
+//	@Tags			general
+//	@Produce		json
+//	@Success		200	{object}	response.APIResponse
+//	@Failure		500	{object}	response.APIResponse
+//	@Router			/api/my-token [post]
 func (c *GreetingController) MyToken(ctx *echo.Context) error {
 	token := c.greeting.MyToken()
 	if token == "" {

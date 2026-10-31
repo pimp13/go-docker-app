@@ -43,6 +43,18 @@ func (c *AuthController) trimInputs(req *dto.RegisterRequest) *dto.RegisterReque
 	return req
 }
 
+// SignUp registers a new user.
+//
+//	@Summary		Register a new user
+//	@Description	Creates a user with the default role
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.RegisterRequest	true	"Registration payload"
+//	@Success		201		{object}	response.APIResponse
+//	@Failure		400		{object}	response.APIResponse
+//	@Failure		409		{object}	response.APIResponse
+//	@Router			/api/auth/sign-up [post]
 func (c *AuthController) SignUp(ctx *echo.Context) error {
 	var req dto.RegisterRequest
 	if err := ctx.Bind(&req); err != nil {
@@ -61,6 +73,19 @@ func (c *AuthController) SignUp(ctx *echo.Context) error {
 	return response.Created(ctx, user)
 }
 
+// Login authenticates a user and sets the JWT cookie.
+//
+//	@Summary		Login
+//	@Description	Authenticates the user and sets the JWT auth cookie
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.LoginRequest	true	"Login payload"
+//	@Success		200		{object}	response.APIResponse
+//	@Failure		400		{object}	response.APIResponse
+//	@Failure		401		{object}	response.APIResponse
+//	@Header			200		{string}	Set-Cookie	"auth_token cookie containing JWT"
+//	@Router			/api/auth/login [post]
 func (c *AuthController) Login(ctx *echo.Context) error {
 	var req dto.LoginRequest
 	if err := ctx.Bind(&req); err != nil {
@@ -80,11 +105,30 @@ func (c *AuthController) Login(ctx *echo.Context) error {
 	return response.OK(ctx, session)
 }
 
+// Logout clears the auth cookie.
+//
+//	@Summary		Logout
+//	@Description	Clears the auth cookie
+//	@Tags			auth
+//	@Produce		json
+//	@Success		200	{object}	response.APIResponse
+//	@Router			/api/auth/logout [post]
 func (c *AuthController) Logout(ctx *echo.Context) error {
 	c.clearSessionCookie(ctx)
 	return response.OK(ctx, map[string]string{"message": "logged out"})
 }
 
+// Me returns the authenticated user.
+//
+//	@Summary		Current user
+//	@Description	Returns the authenticated user profile and permissions
+//	@Tags			auth
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Security		CookieAuth
+//	@Success		200	{object}	response.APIResponse
+//	@Failure		401	{object}	response.APIResponse
+//	@Router			/api/auth/me [get]
 func (c *AuthController) Me(ctx *echo.Context) error {
 	user, err := currentAuthUser(ctx)
 	if err != nil {
@@ -93,6 +137,20 @@ func (c *AuthController) Me(ctx *echo.Context) error {
 	return response.OK(ctx, user)
 }
 
+// ChangePassword updates the password and refreshes the session cookie.
+//
+//	@Summary		Change password
+//	@Description	Changes password and refreshes the auth cookie/token
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Security		CookieAuth
+//	@Param			body	body		dto.ChangePasswordRequest	true	"Password change payload"
+//	@Success		200		{object}	response.APIResponse
+//	@Failure		400		{object}	response.APIResponse
+//	@Failure		401		{object}	response.APIResponse
+//	@Router			/api/auth/change-password [post]
 func (c *AuthController) ChangePassword(ctx *echo.Context) error {
 	user, err := currentAuthUser(ctx)
 	if err != nil {

@@ -24,12 +24,33 @@ definitions:
     type: object
   internal_admin_rbac.SetRolePermissionsRequest:
     properties:
+      action:
+        enum:
+        - add
+        - remove
+        - replace
+        type: string
       permission_codes:
         items:
           type: string
+        minItems: 1
         type: array
     required:
+    - action
     - permission_codes
+    type: object
+  internal_admin_rbac.SetRoleToUserRequest:
+    properties:
+      action:
+        enum:
+        - assign
+        - remove
+        type: string
+      user_id:
+        type: string
+    required:
+    - action
+    - user_id
     type: object
   internal_admin_rbac.UpdateRoleRequest:
     properties:
@@ -453,13 +474,15 @@ paths:
     put:
       consumes:
       - application/json
+      description: action=add|remove|replace. add/remove toggles selected codes; replace
+        sets the full list.
       parameters:
       - description: Role ID
         in: path
         name: id
         required: true
         type: string
-      - description: Permission codes
+      - description: Permission codes and action
         in: body
         name: body
         required: true
@@ -491,7 +514,54 @@ paths:
       security:
       - BearerAuth: []
       - CookieAuth: []
-      summary: Set role permissions
+      summary: Toggle role permissions
+      tags:
+      - admin-rbac
+  /api/admin/rbac/roles/{id}/users:
+    put:
+      consumes:
+      - application/json
+      description: action=assign sets this role on the user. action=remove clears
+        it back to the default user role.
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User id and action
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_admin_rbac.SetRoleToUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Assign or remove role for user
       tags:
       - admin-rbac
   /api/articles:

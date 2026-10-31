@@ -26,6 +26,7 @@ func (c *Controller) Register(admin *echo.Group, requirePerm RequirePermissionFu
 	group.POST("/roles", c.CreateRole)
 	group.PUT("/roles/:id", c.UpdateRole)
 	group.PUT("/roles/:id/permissions", c.SetRolePermissions)
+	group.PUT("/roles/:id/users", c.SetRoleToUser)
 	group.DELETE("/roles/:id", c.DeleteRole)
 }
 
@@ -151,16 +152,17 @@ func (c *Controller) UpdateRole(ctx *echo.Context) error {
 	return response.OK(ctx, role)
 }
 
-// SetRolePermissions replaces permissions for a role.
+// SetRolePermissions adds, removes, or replaces permissions for a role.
 //
-//	@Summary		Set role permissions
+//	@Summary		Toggle role permissions
+//	@Description	action=add|remove|replace. add/remove toggles selected codes; replace sets the full list.
 //	@Tags			admin-rbac
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Security		CookieAuth
 //	@Param			id		path		string						true	"Role ID"
-//	@Param			body	body		SetRolePermissionsRequest	true	"Permission codes"
+//	@Param			body	body		SetRolePermissionsRequest	true	"Permission codes and action"
 //	@Success		200		{object}	response.APIResponse
 //	@Failure		400		{object}	response.APIResponse
 //	@Failure		401		{object}	response.APIResponse
@@ -204,17 +206,53 @@ func (c *Controller) DeleteRole(ctx *echo.Context) error {
 	return response.OK(ctx, map[string]string{"message": "role deleted"})
 }
 
+// SetRoleToUser assigns a role to a user or removes that role from them.
+//
+//	@Summary		Assign or remove role for user
+//	@Description	action=assign sets this role on the user. action=remove clears it back to the default user role.
+//	@Tags			admin-rbac
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Security		CookieAuth
+//	@Param			id		path		string					true	"Role ID"
+//	@Param			body	body		SetRoleToUserRequest	true	"User id and action"
+//	@Success		200		{object}	response.APIResponse
+//	@Failure		400		{object}	response.APIResponse
+//	@Failure		401		{object}	response.APIResponse
+//	@Failure		403		{object}	response.APIResponse
+//	@Failure		404		{object}	response.APIResponse
+//	@Router			/api/admin/rbac/roles/{id}/users [put]
+func (c *Controller) SetRoleToUser(ctx *echo.Context) error {
+	var req SetRoleToUserRequest
+	if err := ctx.Bind(&req); err != nil {
+		return response.BadRequest(ctx, err)
+	}
+	if err := ctx.Validate(&req); err != nil {
+		return response.BadRequest(ctx, err)
+	}
+
+	user, err := c.service.SetRoleToUser(ctx.Request().Context(), ctx.Param("id"), req)
+	if err != nil {
+		return writeError(ctx, err)
+	}
+	return response.OK(ctx, user)
+}
+
 func writeError(ctx *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, ErrRoleNotFound),
-		errors.Is(err, ErrPermissionNotFound):
+		errors.Is(err, ErrPermissionNotFound),
+		errors.Is(err, ErrUserNotFound):
 		return response.NotFound(ctx, err)
 	case errors.Is(err, ErrRoleSlugTaken):
 		return response.Conflict(ctx, err)
 	case errors.Is(err, ErrSystemRoleProtected),
 		errors.Is(err, ErrRoleInUse),
 		errors.Is(err, ErrInvalidRoleSlug),
-		errors.Is(err, ErrInvalidInput):
+		errors.Is(err, ErrInvalidInput),
+		errors.Is(err, ErrInvalidAction),
+		errors.Is(err, ErrUserRoleMismatch):
 		return response.BadRequest(ctx, err)
 	default:
 		return response.InternalServerError(ctx, err)

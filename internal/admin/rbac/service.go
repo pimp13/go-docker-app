@@ -24,6 +24,8 @@ type Service interface {
 	UpdateRole(ctx context.Context, id string, req UpdateRoleRequest) (RoleResponse, error)
 	SetRolePermissions(ctx context.Context, id string, req SetRolePermissionsRequest) (RoleResponse, error)
 	DeleteRole(ctx context.Context, id string) error
+
+	SetRoleToUser(ctx context.Context, id string, req SetRoleToUserRequest) (UserResponse, error)
 }
 
 type service struct {
@@ -161,8 +163,22 @@ func (s *service) SetRolePermissions(ctx context.Context, id string, req SetRole
 		return RoleResponse{}, err
 	}
 
-	if err := s.db.WithContext(ctx).Model(&role).Association("Permissions").Replace(permissions); err != nil {
-		return RoleResponse{}, err
+	assoc := s.db.WithContext(ctx).Model(&role).Association("Permissions")
+	switch strings.ToLower(strings.TrimSpace(req.Action)) {
+	case PermissionActionAdd:
+		if err := assoc.Append(permissions); err != nil {
+			return RoleResponse{}, err
+		}
+	case PermissionActionRemove:
+		if err := assoc.Delete(permissions); err != nil {
+			return RoleResponse{}, err
+		}
+	case PermissionActionReplace:
+		if err := assoc.Replace(permissions); err != nil {
+			return RoleResponse{}, err
+		}
+	default:
+		return RoleResponse{}, ErrInvalidAction
 	}
 
 	stored, err := s.findRoleByID(ctx, roleID)
@@ -202,6 +218,67 @@ func (s *service) DeleteRole(ctx context.Context, id string) error {
 	})
 }
 
+func (s *service) SetRoleToUser(
+	ctx context.Context,
+	id string,
+	req SetRoleToUserRequest,
+) (UserResponse, error) {
+	roleID, err := uuid.Parse(id)
+	if err != nil {
+		return UserResponse{}, ErrRoleNotFound
+	}
+	role, err := s.findRoleByID(ctx, roleID)
+	if err != nil {
+		return UserResponse{}, err
+	}
+
+	userID, err := uuid.Parse(req.UserID)
+	if err != nil {
+		return UserResponse{}, ErrUserNotFound
+	}
+
+	user, err := s.findUserByID(ctx, userID)
+	if err != nil {
+		return UserResponse{}, err
+	}
+
+	action := strings.ToLower(strings.TrimSpace(req.Action))
+	switch action {
+	case UserRoleActionAssign:
+		if err := s.db.WithContext(ctx).
+			Model(&model.User{}).
+			Where("id = ?", user.ID).
+			Update("role_id", role.ID).Error; err != nil {
+			return UserResponse{}, err
+		}
+	case UserRoleActionRemove:
+		if user.RoleID != role.ID {
+			return UserResponse{}, ErrUserRoleMismatch
+		}
+		defaultRole, err := s.findRoleBySlug(ctx, model.RoleSlugUser)
+		if err != nil {
+			return UserResponse{}, err
+		}
+		if defaultRole.ID == role.ID {
+			return UserResponse{}, ErrInvalidInput
+		}
+		if err := s.db.WithContext(ctx).
+			Model(&model.User{}).
+			Where("id = ?", user.ID).
+			Update("role_id", defaultRole.ID).Error; err != nil {
+			return UserResponse{}, err
+		}
+	default:
+		return UserResponse{}, ErrInvalidAction
+	}
+
+	stored, err := s.findUserByID(ctx, user.ID)
+	if err != nil {
+		return UserResponse{}, err
+	}
+	return toUserResponse(stored), nil
+}
+
 func (s *service) findRoleByID(ctx context.Context, id uuid.UUID) (model.Role, error) {
 	var role model.Role
 	err := s.db.WithContext(ctx).
@@ -214,6 +291,34 @@ func (s *service) findRoleByID(ctx context.Context, id uuid.UUID) (model.Role, e
 		return model.Role{}, ErrRoleNotFound
 	}
 	return role, err
+}
+
+func (s *service) findRoleBySlug(ctx context.Context, slug string) (model.Role, error) {
+	var role model.Role
+	err := s.db.WithContext(ctx).
+		Preload("Permissions", func(db *gorm.DB) *gorm.DB {
+			return db.Order("resource ASC, action ASC")
+		}).
+		Where("slug = ?", slug).
+		Take(&role).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return model.Role{}, ErrRoleNotFound
+	}
+	return role, err
+}
+
+func (s *service) findUserByID(ctx context.Context, id uuid.UUID) (model.User, error) {
+	var user model.User
+	err := s.db.WithContext(ctx).
+		Preload("Role.Permissions", func(db *gorm.DB) *gorm.DB {
+			return db.Order("resource ASC, action ASC")
+		}).
+		Where("id = ?", id).
+		Take(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return model.User{}, ErrUserNotFound
+	}
+	return user, err
 }
 
 func (s *service) findPermissionsByCodes(ctx context.Context, codes []string) ([]model.Permission, error) {
@@ -306,4 +411,14 @@ func toPermissionResponses(permissions []model.Permission) []PermissionResponse 
 		})
 	}
 	return out
+}
+
+func toUserResponse(user model.User) UserResponse {
+	return UserResponse{
+		ID:        user.ID.String(),
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		Role:      toRoleResponse(user.Role),
+	}
 }

@@ -392,6 +392,7 @@
                         "CookieAuth": []
                     }
                 ],
+                "description": "action=add|remove|replace. add/remove toggles selected codes; replace sets the full list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -401,7 +402,7 @@
                 "tags": [
                     "admin-rbac"
                 ],
-                "summary": "Set role permissions",
+                "summary": "Toggle role permissions",
                 "parameters": [
                     {
                         "type": "string",
@@ -411,12 +412,85 @@
                         "required": true
                     },
                     {
-                        "description": "Permission codes",
+                        "description": "Permission codes and action",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/internal_admin_rbac.SetRolePermissionsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/rbac/roles/{id}/users": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "action=assign sets this role on the user. action=remove clears it back to the default user role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin-rbac"
+                ],
+                "summary": "Assign or remove role for user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User id and action",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_admin_rbac.SetRoleToUserRequest"
                         }
                     }
                 ],
@@ -1072,14 +1146,43 @@
         "internal_admin_rbac.SetRolePermissionsRequest": {
             "type": "object",
             "required": [
+                "action",
                 "permission_codes"
             ],
             "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "add",
+                        "remove",
+                        "replace"
+                    ]
+                },
                 "permission_codes": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "internal_admin_rbac.SetRoleToUserRequest": {
+            "type": "object",
+            "required": [
+                "action",
+                "user_id"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "assign",
+                        "remove"
+                    ]
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },

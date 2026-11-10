@@ -4,6 +4,7 @@ import (
 	"test/internal/admin"
 	"test/internal/config"
 	"test/internal/service"
+	"test/internal/sso"
 
 	"github.com/labstack/echo/v5"
 	"gorm.io/gorm"
@@ -14,14 +15,14 @@ type Registrar interface {
 	Register(api *echo.Group)
 }
 
-// Handlers holds all public HTTP controllers (constructor-injected).
+// Handlers holds general HTTP controllers plus specialized modules.
 type Handlers struct {
 	Health   *HealthController
 	Greeting *GreetingController
 	User     *UserController
 	Article  *ArticleController
 	Auth     *AuthController
-	SSO      *SSOController
+	SSO      *sso.API
 	Admin    *admin.API
 }
 
@@ -34,7 +35,7 @@ func NewHandlers(cfg *config.Config, svcs *service.Services, db *gorm.DB) *Handl
 		Auth:     auth,
 		User:     NewUserController(svcs.User, auth),
 		Article:  NewArticleController(svcs.Article, auth),
-		SSO:      NewSSOController(svcs.SSO, svcs.Auth, auth, cfg),
+		SSO:      sso.New(db, cfg),
 		Admin:    admin.New(db),
 	}
 }
@@ -49,8 +50,9 @@ func Register(e *echo.Echo, cfg config.AppConfig, h *Handlers) {
 	registerAPI(api, h.User)
 	registerAPI(api, h.Article)
 	registerAPI(api, h.Auth)
-	registerAPI(api, h.SSO)
 
+	// Specialized modules keep their own packages/controllers.
+	h.SSO.Register(api, h.Auth.AuthService(), h.Auth)
 	h.Admin.Register(api, h.Auth)
 }
 

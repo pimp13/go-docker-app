@@ -24,6 +24,11 @@ func NewAuthController(auth service.AuthService, cfg config.AuthConfig) *AuthCon
 	return &AuthController{auth: auth, cfg: cfg}
 }
 
+// AuthService exposes the underlying auth service for specialized modules.
+func (c *AuthController) AuthService() service.AuthService {
+	return c.auth
+}
+
 func (c *AuthController) Register(api *echo.Group) {
 	auth := api.Group("/auth")
 	auth.POST("/sign-up", c.SignUp)
@@ -177,7 +182,7 @@ func (c *AuthController) ChangePassword(ctx *echo.Context) error {
 // RequireAuth reads the JWT from the auth cookie, then from Authorization: Bearer.
 func (c *AuthController) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx *echo.Context) error {
-		raw, err := c.tokenFromRequest(ctx)
+		raw, err := c.TokenFromRequest(ctx)
 		if err != nil {
 			return response.Unauthorized(ctx, err)
 		}
@@ -209,7 +214,8 @@ func (c *AuthController) RequirePermission(codes ...string) echo.MiddlewareFunc 
 	}
 }
 
-func (c *AuthController) tokenFromRequest(ctx *echo.Context) (string, error) {
+// TokenFromRequest extracts the session JWT from cookie or Authorization bearer.
+func (c *AuthController) TokenFromRequest(ctx *echo.Context) (string, error) {
 	if cookie, err := ctx.Cookie(c.cfg.CookieName); err == nil {
 		if token := strings.TrimSpace(cookie.Value); token != "" {
 			return token, nil
@@ -221,6 +227,11 @@ func (c *AuthController) tokenFromRequest(ctx *echo.Context) (string, error) {
 	}
 
 	return "", service.ErrUnauthenticated
+}
+
+// CurrentUser returns the authenticated user previously loaded by RequireAuth.
+func (c *AuthController) CurrentUser(ctx *echo.Context) (dto.AuthUser, error) {
+	return currentAuthUser(ctx)
 }
 
 func bearerToken(header string) string {

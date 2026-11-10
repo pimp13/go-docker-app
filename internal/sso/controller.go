@@ -1,4 +1,4 @@
-package controller
+package sso
 
 import (
 	"errors"
@@ -6,25 +6,23 @@ import (
 	"net/url"
 	"strings"
 	"test/internal/config"
-	"test/internal/service"
-	"test/internal/sso"
 	"test/pkg/response"
 
 	"github.com/labstack/echo/v5"
 )
 
-type SSOController struct {
-	sso     sso.Service
-	authAPI service.AuthService
-	guard   *AuthController
+type Controller struct {
+	service Service
+	authAPI Authenticator
+	guard   Guard
 	cfg     *config.Config
 }
 
-func NewSSOController(svc sso.Service, authAPI service.AuthService, guard *AuthController, cfg *config.Config) *SSOController {
-	return &SSOController{sso: svc, authAPI: authAPI, guard: guard, cfg: cfg}
+func NewController(service Service, authAPI Authenticator, guard Guard, cfg *config.Config) *Controller {
+	return &Controller{service: service, authAPI: authAPI, guard: guard, cfg: cfg}
 }
 
-func (c *SSOController) Register(api *echo.Group) {
+func (c *Controller) Register(api *echo.Group) {
 	group := api.Group("/sso")
 	group.GET("/.well-known/openid-configuration", c.Discovery)
 	group.GET("/authorize", c.Authorize)
@@ -39,11 +37,11 @@ func (c *SSOController) Register(api *echo.Group) {
 //	@Summary		SSO discovery document
 //	@Tags			sso
 //	@Produce		json
-//	@Success		200	{object}	sso.DiscoveryDocument
+//	@Success		200	{object}	DiscoveryDocument
 //	@Router			/api/sso/.well-known/openid-configuration [get]
-func (c *SSOController) Discovery(ctx *echo.Context) error {
+func (c *Controller) Discovery(ctx *echo.Context) error {
 	base := c.publicBaseURL(ctx)
-	return ctx.JSON(http.StatusOK, c.sso.Discovery(base))
+	return ctx.JSON(http.StatusOK, c.service.Discovery(base))
 }
 
 // Authorize starts the OAuth2 authorization-code flow using the current session cookie.
@@ -63,8 +61,8 @@ func (c *SSOController) Discovery(ctx *echo.Context) error {
 //	@Failure		400	{object}	response.APIResponse
 //	@Failure		401	{object}	response.APIResponse
 //	@Router			/api/sso/authorize [get]
-func (c *SSOController) Authorize(ctx *echo.Context) error {
-	var q sso.AuthorizeQuery
+func (c *Controller) Authorize(ctx *echo.Context) error {
+	var q AuthorizeQuery
 	if err := ctx.Bind(&q); err != nil {
 		return response.BadRequest(ctx, err)
 	}
@@ -75,7 +73,7 @@ func (c *SSOController) Authorize(ctx *echo.Context) error {
 		return response.BadRequest(ctx, err)
 	}
 
-	raw, err := c.guard.tokenFromRequest(ctx)
+	raw, err := c.guard.TokenFromRequest(ctx)
 	if err != nil {
 		return c.loginRequired(ctx, q)
 	}
@@ -84,9 +82,9 @@ func (c *SSOController) Authorize(ctx *echo.Context) error {
 		return c.loginRequired(ctx, q)
 	}
 
-	redirectTo, err := c.sso.Authorize(ctx.Request().Context(), user, q)
+	redirectTo, err := c.service.Authorize(ctx.Request().Context(), user, q)
 	if err != nil {
-		return writeSSOError(ctx, err)
+		return writeError(ctx, err)
 	}
 	return ctx.Redirect(http.StatusFound, redirectTo)
 }
@@ -97,13 +95,13 @@ func (c *SSOController) Authorize(ctx *echo.Context) error {
 //	@Tags			sso
 //	@Accept			json
 //	@Produce		json
-//	@Param			body	body		sso.TokenRequest	true	"authorization_code grant"
-//	@Success		200		{object}	sso.TokenResponse
+//	@Param			body	body		TokenRequest	true	"authorization_code grant"
+//	@Success		200		{object}	TokenResponse
 //	@Failure		400		{object}	response.APIResponse
 //	@Failure		401		{object}	response.APIResponse
 //	@Router			/api/sso/token [post]
-func (c *SSOController) Token(ctx *echo.Context) error {
-	var req sso.TokenRequest
+func (c *Controller) Token(ctx *echo.Context) error {
+	var req TokenRequest
 	if err := ctx.Bind(&req); err != nil {
 		return response.BadRequest(ctx, err)
 	}
@@ -111,9 +109,9 @@ func (c *SSOController) Token(ctx *echo.Context) error {
 		return response.BadRequest(ctx, err)
 	}
 
-	token, err := c.sso.ExchangeToken(ctx.Request().Context(), req)
+	token, err := c.service.ExchangeToken(ctx.Request().Context(), req)
 	if err != nil {
-		return writeSSOError(ctx, err)
+		return writeError(ctx, err)
 	}
 	return ctx.JSON(http.StatusOK, token)
 }
@@ -124,17 +122,17 @@ func (c *SSOController) Token(ctx *echo.Context) error {
 //	@Tags			sso
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Success		200	{object}	sso.UserInfoResponse
+//	@Success		200	{object}	UserInfoResponse
 //	@Failure		401	{object}	response.APIResponse
 //	@Router			/api/sso/userinfo [get]
-func (c *SSOController) UserInfo(ctx *echo.Context) error {
+func (c *Controller) UserInfo(ctx *echo.Context) error {
 	raw := bearerToken(ctx.Request().Header.Get("Authorization"))
 	if raw == "" {
-		return response.Unauthorized(ctx, sso.ErrLoginRequired)
+		return response.Unauthorized(ctx, ErrLoginRequired)
 	}
-	info, err := c.sso.UserInfo(ctx.Request().Context(), raw)
+	info, err := c.service.UserInfo(ctx.Request().Context(), raw)
 	if err != nil {
-		return writeSSOError(ctx, err)
+		return writeError(ctx, err)
 	}
 	return ctx.JSON(http.StatusOK, info)
 }
@@ -145,12 +143,12 @@ func (c *SSOController) UserInfo(ctx *echo.Context) error {
 //	@Tags			sso
 //	@Accept			json
 //	@Produce		json
-//	@Param			body	body		sso.IntrospectRequest	true	"token + client credentials"
-//	@Success		200		{object}	sso.IntrospectResponse
+//	@Param			body	body		IntrospectRequest	true	"token + client credentials"
+//	@Success		200		{object}	IntrospectResponse
 //	@Failure		401		{object}	response.APIResponse
 //	@Router			/api/sso/introspect [post]
-func (c *SSOController) Introspect(ctx *echo.Context) error {
-	var req sso.IntrospectRequest
+func (c *Controller) Introspect(ctx *echo.Context) error {
+	var req IntrospectRequest
 	if err := ctx.Bind(&req); err != nil {
 		return response.BadRequest(ctx, err)
 	}
@@ -158,9 +156,9 @@ func (c *SSOController) Introspect(ctx *echo.Context) error {
 		return response.BadRequest(ctx, err)
 	}
 
-	result, err := c.sso.Introspect(ctx.Request().Context(), req)
+	result, err := c.service.Introspect(ctx.Request().Context(), req)
 	if err != nil {
-		return writeSSOError(ctx, err)
+		return writeError(ctx, err)
 	}
 	return ctx.JSON(http.StatusOK, result)
 }
@@ -174,17 +172,17 @@ func (c *SSOController) Introspect(ctx *echo.Context) error {
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Security		CookieAuth
-//	@Param			body	body		sso.SessionExchangeRequest	true	"client credentials"
-//	@Success		200		{object}	sso.SessionExchangeResponse
+//	@Param			body	body		SessionExchangeRequest	true	"client credentials"
+//	@Success		200		{object}	SessionExchangeResponse
 //	@Failure		401		{object}	response.APIResponse
 //	@Router			/api/sso/session [post]
-func (c *SSOController) ExchangeSession(ctx *echo.Context) error {
-	user, err := currentAuthUser(ctx)
+func (c *Controller) ExchangeSession(ctx *echo.Context) error {
+	user, err := c.guard.CurrentUser(ctx)
 	if err != nil {
 		return response.Unauthorized(ctx, err)
 	}
 
-	var req sso.SessionExchangeRequest
+	var req SessionExchangeRequest
 	if err := ctx.Bind(&req); err != nil {
 		return response.BadRequest(ctx, err)
 	}
@@ -192,23 +190,23 @@ func (c *SSOController) ExchangeSession(ctx *echo.Context) error {
 		return response.BadRequest(ctx, err)
 	}
 
-	result, err := c.sso.ExchangeSession(ctx.Request().Context(), user, req)
+	result, err := c.service.ExchangeSession(ctx.Request().Context(), user, req)
 	if err != nil {
-		return writeSSOError(ctx, err)
+		return writeError(ctx, err)
 	}
 	return ctx.JSON(http.StatusOK, result)
 }
 
-func (c *SSOController) loginRequired(ctx *echo.Context, q sso.AuthorizeQuery) error {
+func (c *Controller) loginRequired(ctx *echo.Context, q AuthorizeQuery) error {
 	loginURL := strings.TrimSpace(c.cfg.SSO.LoginURL)
 	if loginURL == "" {
-		return response.Unauthorized(ctx, sso.ErrLoginRequired)
+		return response.Unauthorized(ctx, ErrLoginRequired)
 	}
 
 	returnTo := c.publicBaseURL(ctx) + strings.TrimRight(c.cfg.App.Prefix, "/") + "/sso/authorize?" + ctx.Request().URL.RawQuery
 	u, err := url.Parse(loginURL)
 	if err != nil {
-		return response.Unauthorized(ctx, sso.ErrLoginRequired)
+		return response.Unauthorized(ctx, ErrLoginRequired)
 	}
 	query := u.Query()
 	query.Set("return_to", returnTo)
@@ -219,7 +217,7 @@ func (c *SSOController) loginRequired(ctx *echo.Context, q sso.AuthorizeQuery) e
 	return ctx.Redirect(http.StatusFound, u.String())
 }
 
-func (c *SSOController) publicBaseURL(ctx *echo.Context) string {
+func (c *Controller) publicBaseURL(ctx *echo.Context) string {
 	if base := strings.TrimSpace(c.cfg.SSO.PublicBaseURL); base != "" {
 		return strings.TrimRight(base, "/")
 	}
@@ -233,22 +231,30 @@ func (c *SSOController) publicBaseURL(ctx *echo.Context) string {
 	return scheme + "://" + ctx.Request().Host
 }
 
-func writeSSOError(ctx *echo.Context, err error) error {
+func bearerToken(header string) string {
+	const prefix = "Bearer "
+	if len(header) < len(prefix) || !strings.EqualFold(header[:len(prefix)], prefix) {
+		return ""
+	}
+	return strings.TrimSpace(header[len(prefix):])
+}
+
+func writeError(ctx *echo.Context, err error) error {
 	switch {
-	case errors.Is(err, sso.ErrLoginRequired),
-		errors.Is(err, sso.ErrInvalidClient),
-		errors.Is(err, sso.ErrInvalidGrant),
-		errors.Is(err, sso.ErrCodeExpired),
-		errors.Is(err, sso.ErrCodeUsed),
-		errors.Is(err, sso.ErrPKCEInvalid):
+	case errors.Is(err, ErrLoginRequired),
+		errors.Is(err, ErrInvalidClient),
+		errors.Is(err, ErrInvalidGrant),
+		errors.Is(err, ErrCodeExpired),
+		errors.Is(err, ErrCodeUsed),
+		errors.Is(err, ErrPKCEInvalid):
 		return response.Unauthorized(ctx, err)
-	case errors.Is(err, sso.ErrInactiveClient):
+	case errors.Is(err, ErrInactiveClient):
 		return response.Forbidden(ctx, err)
-	case errors.Is(err, sso.ErrInvalidRedirectURI),
-		errors.Is(err, sso.ErrPKCERequired),
-		errors.Is(err, sso.ErrUnsupportedType),
-		errors.Is(err, sso.ErrInvalidScope),
-		errors.Is(err, sso.ErrInvalidInput):
+	case errors.Is(err, ErrInvalidRedirectURI),
+		errors.Is(err, ErrPKCERequired),
+		errors.Is(err, ErrUnsupportedType),
+		errors.Is(err, ErrInvalidScope),
+		errors.Is(err, ErrInvalidInput):
 		return response.BadRequest(ctx, err)
 	default:
 		return response.InternalServerError(ctx, err)

@@ -958,7 +958,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/test_internal_sso.DiscoveryDocument"
+                            "$ref": "#/definitions/internal_sso.DiscoveryDocument"
                         }
                     }
                 }
@@ -1062,7 +1062,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/test_internal_sso.IntrospectRequest"
+                            "$ref": "#/definitions/internal_sso.IntrospectRequest"
                         }
                     }
                 ],
@@ -1070,7 +1070,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/test_internal_sso.IntrospectResponse"
+                            "$ref": "#/definitions/internal_sso.IntrospectResponse"
                         }
                     },
                     "401": {
@@ -1110,7 +1110,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/test_internal_sso.SessionExchangeRequest"
+                            "$ref": "#/definitions/internal_sso.SessionExchangeRequest"
                         }
                     }
                 ],
@@ -1118,7 +1118,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/test_internal_sso.SessionExchangeResponse"
+                            "$ref": "#/definitions/internal_sso.SessionExchangeResponse"
                         }
                     },
                     "401": {
@@ -1149,7 +1149,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/test_internal_sso.TokenRequest"
+                            "$ref": "#/definitions/internal_sso.TokenRequest"
                         }
                     }
                 ],
@@ -1157,7 +1157,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/test_internal_sso.TokenResponse"
+                            "$ref": "#/definitions/internal_sso.TokenResponse"
                         }
                     },
                     "400": {
@@ -1193,7 +1193,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/test_internal_sso.UserInfoResponse"
+                            "$ref": "#/definitions/internal_sso.UserInfoResponse"
                         }
                     },
                     "401": {
@@ -1469,6 +1469,232 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_sso.DiscoveryDocument": {
+            "type": "object",
+            "properties": {
+                "authorization_endpoint": {
+                    "type": "string"
+                },
+                "code_challenge_methods_supported": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "grant_types_supported": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "introspection_endpoint": {
+                    "type": "string"
+                },
+                "issuer": {
+                    "type": "string"
+                },
+                "response_types_supported": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "scopes_supported": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "subject_types_supported": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "token_endpoint": {
+                    "type": "string"
+                },
+                "token_endpoint_auth_methods_supported": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "userinfo_endpoint": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_sso.IntrospectRequest": {
+            "type": "object",
+            "required": [
+                "client_id",
+                "client_secret",
+                "token"
+            ],
+            "properties": {
+                "client_id": {
+                    "type": "string"
+                },
+                "client_secret": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_sso.IntrospectResponse": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "client_id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "exp": {
+                    "type": "integer"
+                },
+                "iat": {
+                    "type": "integer"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "role": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "sub": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_sso.SessionExchangeRequest": {
+            "type": "object",
+            "required": [
+                "client_id",
+                "client_secret"
+            ],
+            "properties": {
+                "client_id": {
+                    "type": "string"
+                },
+                "client_secret": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_sso.SessionExchangeResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "token_type": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/internal_sso.UserInfoResponse"
+                }
+            }
+        },
+        "internal_sso.TokenRequest": {
+            "type": "object",
+            "required": [
+                "client_id",
+                "code",
+                "grant_type",
+                "redirect_uri"
+            ],
+            "properties": {
+                "client_id": {
+                    "type": "string"
+                },
+                "client_secret": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "code_verifier": {
+                    "type": "string"
+                },
+                "grant_type": {
+                    "type": "string"
+                },
+                "redirect_uri": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_sso.TokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_sso.UserInfoResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "family_name": {
+                    "type": "string"
+                },
+                "given_name": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "sub": {
+                    "type": "string"
+                }
+            }
+        },
         "test_internal_dto.ChangePasswordRequest": {
             "type": "object",
             "required": [
@@ -1653,232 +1879,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "version": {
-                    "type": "string"
-                }
-            }
-        },
-        "test_internal_sso.DiscoveryDocument": {
-            "type": "object",
-            "properties": {
-                "authorization_endpoint": {
-                    "type": "string"
-                },
-                "code_challenge_methods_supported": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "grant_types_supported": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "introspection_endpoint": {
-                    "type": "string"
-                },
-                "issuer": {
-                    "type": "string"
-                },
-                "response_types_supported": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "scopes_supported": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "subject_types_supported": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "token_endpoint": {
-                    "type": "string"
-                },
-                "token_endpoint_auth_methods_supported": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "userinfo_endpoint": {
-                    "type": "string"
-                }
-            }
-        },
-        "test_internal_sso.IntrospectRequest": {
-            "type": "object",
-            "required": [
-                "client_id",
-                "client_secret",
-                "token"
-            ],
-            "properties": {
-                "client_id": {
-                    "type": "string"
-                },
-                "client_secret": {
-                    "type": "string"
-                },
-                "token": {
-                    "type": "string"
-                }
-            }
-        },
-        "test_internal_sso.IntrospectResponse": {
-            "type": "object",
-            "properties": {
-                "active": {
-                    "type": "boolean"
-                },
-                "client_id": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "exp": {
-                    "type": "integer"
-                },
-                "iat": {
-                    "type": "integer"
-                },
-                "permissions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "role": {
-                    "type": "string"
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "sub": {
-                    "type": "string"
-                },
-                "token_type": {
-                    "type": "string"
-                }
-            }
-        },
-        "test_internal_sso.SessionExchangeRequest": {
-            "type": "object",
-            "required": [
-                "client_id",
-                "client_secret"
-            ],
-            "properties": {
-                "client_id": {
-                    "type": "string"
-                },
-                "client_secret": {
-                    "type": "string"
-                }
-            }
-        },
-        "test_internal_sso.SessionExchangeResponse": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "expires_at": {
-                    "type": "string"
-                },
-                "expires_in": {
-                    "type": "integer"
-                },
-                "token_type": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/test_internal_sso.UserInfoResponse"
-                }
-            }
-        },
-        "test_internal_sso.TokenRequest": {
-            "type": "object",
-            "required": [
-                "client_id",
-                "code",
-                "grant_type",
-                "redirect_uri"
-            ],
-            "properties": {
-                "client_id": {
-                    "type": "string"
-                },
-                "client_secret": {
-                    "type": "string"
-                },
-                "code": {
-                    "type": "string"
-                },
-                "code_verifier": {
-                    "type": "string"
-                },
-                "grant_type": {
-                    "type": "string"
-                },
-                "redirect_uri": {
-                    "type": "string"
-                }
-            }
-        },
-        "test_internal_sso.TokenResponse": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "expires_in": {
-                    "type": "integer"
-                },
-                "scope": {
-                    "type": "string"
-                },
-                "token_type": {
-                    "type": "string"
-                }
-            }
-        },
-        "test_internal_sso.UserInfoResponse": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "family_name": {
-                    "type": "string"
-                },
-                "given_name": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "permissions": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "role": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "sub": {
                     "type": "string"
                 }
             }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"test/internal/config"
+	"test/internal/sso"
 
 	"gorm.io/gorm"
 )
@@ -13,6 +14,7 @@ type Services struct {
 	User     UserService
 	Article  ArticleService
 	Auth     AuthService
+	SSO      sso.Service
 }
 
 // NewServices wires concrete service implementations.
@@ -23,5 +25,6 @@ func NewServices(cfg *config.Config, db *gorm.DB) *Services {
 		User:     NewUserService(db, cfg.App.SecretKey),
 		Article:  NewArticleService(db, cfg.App.SecretKey),
 		Auth:     NewAuthService(db, cfg),
+		SSO:      sso.NewService(db, cfg),
 	}
 }

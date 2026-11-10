@@ -68,6 +68,9 @@ func main() {
 	if err := seed.Setup(db); err != nil {
 		log.Fatalf("setup rbac: %v", err)
 	}
+	if err := seed.SetupSSO(db, cfg.SSO); err != nil {
+		log.Fatalf("setup sso: %v", err)
+	}
 
 	log.Println("Connected to PostgreSQL successfully!")
 

@@ -20,6 +20,22 @@ type Config struct {
 	App  AppConfig
 	DB   DatabaseConfig
 	Auth AuthConfig
+	SSO  SSOConfig
+}
+
+// SSOConfig holds OAuth2/OIDC-lite single sign-on settings.
+type SSOConfig struct {
+	Issuer         string
+	PublicBaseURL  string
+	LoginURL       string
+	CodeTTL        time.Duration
+	AccessTokenTTL time.Duration
+
+	DefaultClientID          string
+	DefaultClientSecret      string
+	DefaultClientName        string
+	DefaultClientRedirectURI string
+	DefaultClientRequirePKCE bool
 }
 
 // AppConfig holds HTTP server and application runtime settings.
@@ -124,6 +140,19 @@ func load() (*Config, error) {
 		return nil, err
 	}
 
+	ssoCodeTTL, err := envDuration("SSO_CODE_TTL", 2*time.Minute)
+	if err != nil {
+		return nil, err
+	}
+	ssoAccessTTL, err := envDuration("SSO_ACCESS_TOKEN_TTL", 15*time.Minute)
+	if err != nil {
+		return nil, err
+	}
+	ssoRequirePKCE, err := envBool("SSO_DEFAULT_CLIENT_REQUIRE_PKCE", false)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		App: AppConfig{
 			Port:             port,
@@ -151,6 +180,18 @@ func load() (*Config, error) {
 			JWTSecret:      envString("AUTH_JWT_SECRET", secretKey),
 			JWTIssuer:      envString("AUTH_JWT_ISSUER", "test"),
 			TokenTTL:       tokenTTL,
+		},
+		SSO: SSOConfig{
+			Issuer:                   envString("SSO_ISSUER", envString("AUTH_JWT_ISSUER", "test")),
+			PublicBaseURL:            envString("SSO_PUBLIC_BASE_URL", "http://localhost:8080"),
+			LoginURL:                 envString("SSO_LOGIN_URL", "http://localhost:3000/login"),
+			CodeTTL:                  ssoCodeTTL,
+			AccessTokenTTL:           ssoAccessTTL,
+			DefaultClientID:          envString("SSO_DEFAULT_CLIENT_ID", "demo-app"),
+			DefaultClientSecret:      envString("SSO_DEFAULT_CLIENT_SECRET", ""),
+			DefaultClientName:        envString("SSO_DEFAULT_CLIENT_NAME", "Demo App"),
+			DefaultClientRedirectURI: envString("SSO_DEFAULT_CLIENT_REDIRECT_URI", "http://localhost:3000/sso/callback"),
+			DefaultClientRequirePKCE: ssoRequirePKCE,
 		},
 	}
 
@@ -219,6 +260,18 @@ func (c *Config) validate() error {
 	}
 	if c.App.IsProduction && !c.Auth.CookieSecure {
 		return fmt.Errorf("AUTH_COOKIE_SECURE must be true when APP_IS_PRODUCTION is true")
+	}
+	if strings.TrimSpace(c.SSO.Issuer) == "" {
+		return fmt.Errorf("SSO_ISSUER must not be empty")
+	}
+	if c.SSO.CodeTTL <= 0 {
+		return fmt.Errorf("SSO_CODE_TTL must be greater than zero")
+	}
+	if c.SSO.AccessTokenTTL <= 0 {
+		return fmt.Errorf("SSO_ACCESS_TOKEN_TTL must be greater than zero")
+	}
+	if strings.TrimSpace(c.SSO.DefaultClientID) != "" && len(strings.TrimSpace(c.SSO.DefaultClientSecret)) < 16 {
+		return fmt.Errorf("SSO_DEFAULT_CLIENT_SECRET must be at least 16 characters when default client id is set")
 	}
 	return nil
 }

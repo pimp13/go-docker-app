@@ -202,6 +202,156 @@ definitions:
       version:
         type: string
     type: object
+  test_internal_sso.DiscoveryDocument:
+    properties:
+      authorization_endpoint:
+        type: string
+      code_challenge_methods_supported:
+        items:
+          type: string
+        type: array
+      grant_types_supported:
+        items:
+          type: string
+        type: array
+      introspection_endpoint:
+        type: string
+      issuer:
+        type: string
+      response_types_supported:
+        items:
+          type: string
+        type: array
+      scopes_supported:
+        items:
+          type: string
+        type: array
+      subject_types_supported:
+        items:
+          type: string
+        type: array
+      token_endpoint:
+        type: string
+      token_endpoint_auth_methods_supported:
+        items:
+          type: string
+        type: array
+      userinfo_endpoint:
+        type: string
+    type: object
+  test_internal_sso.IntrospectRequest:
+    properties:
+      client_id:
+        type: string
+      client_secret:
+        type: string
+      token:
+        type: string
+    required:
+    - client_id
+    - client_secret
+    - token
+    type: object
+  test_internal_sso.IntrospectResponse:
+    properties:
+      active:
+        type: boolean
+      client_id:
+        type: string
+      email:
+        type: string
+      exp:
+        type: integer
+      iat:
+        type: integer
+      permissions:
+        items:
+          type: string
+        type: array
+      role:
+        type: string
+      scope:
+        type: string
+      sub:
+        type: string
+      token_type:
+        type: string
+    type: object
+  test_internal_sso.SessionExchangeRequest:
+    properties:
+      client_id:
+        type: string
+      client_secret:
+        type: string
+    required:
+    - client_id
+    - client_secret
+    type: object
+  test_internal_sso.SessionExchangeResponse:
+    properties:
+      access_token:
+        type: string
+      expires_at:
+        type: string
+      expires_in:
+        type: integer
+      token_type:
+        type: string
+      user:
+        $ref: '#/definitions/test_internal_sso.UserInfoResponse'
+    type: object
+  test_internal_sso.TokenRequest:
+    properties:
+      client_id:
+        type: string
+      client_secret:
+        type: string
+      code:
+        type: string
+      code_verifier:
+        type: string
+      grant_type:
+        type: string
+      redirect_uri:
+        type: string
+    required:
+    - client_id
+    - code
+    - grant_type
+    - redirect_uri
+    type: object
+  test_internal_sso.TokenResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      scope:
+        type: string
+      token_type:
+        type: string
+    type: object
+  test_internal_sso.UserInfoResponse:
+    properties:
+      email:
+        type: string
+      family_name:
+        type: string
+      given_name:
+        type: string
+      name:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+      role:
+        type: string
+      status:
+        type: string
+      sub:
+        type: string
+    type: object
   test_pkg_response.APIResponse:
     properties:
       result:
@@ -820,6 +970,174 @@ paths:
       summary: Generate development token
       tags:
       - general
+  /api/sso/.well-known/openid-configuration:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_internal_sso.DiscoveryDocument'
+      summary: SSO discovery document
+      tags:
+      - sso
+  /api/sso/authorize:
+    get:
+      description: Requires an authenticated browser session cookie. Redirects back
+        with ?code=&state=
+      parameters:
+      - description: Must be code
+        in: query
+        name: response_type
+        required: true
+        type: string
+      - description: Registered client id
+        in: query
+        name: client_id
+        required: true
+        type: string
+      - description: Allowed redirect URI
+        in: query
+        name: redirect_uri
+        required: true
+        type: string
+      - description: Opaque CSRF state
+        in: query
+        name: state
+        type: string
+      - description: openid profile email
+        in: query
+        name: scope
+        type: string
+      - description: PKCE challenge
+        in: query
+        name: code_challenge
+        type: string
+      - description: S256 or plain
+        in: query
+        name: code_challenge_method
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      summary: SSO authorize
+      tags:
+      - sso
+  /api/sso/introspect:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: token + client credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/test_internal_sso.IntrospectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_internal_sso.IntrospectResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      summary: SSO token introspection
+      tags:
+      - sso
+  /api/sso/session:
+    post:
+      consumes:
+      - application/json
+      description: Use when the user is already logged into this IdP and a trusted
+        client wants an access token without browser redirect.
+      parameters:
+      - description: client credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/test_internal_sso.SessionExchangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_internal_sso.SessionExchangeResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Exchange session for SSO token
+      tags:
+      - sso
+  /api/sso/token:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: authorization_code grant
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/test_internal_sso.TokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_internal_sso.TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      summary: SSO token exchange
+      tags:
+      - sso
+  /api/sso/userinfo:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_internal_sso.UserInfoResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: SSO userinfo
+      tags:
+      - sso
   /api/users/create:
     post:
       consumes:

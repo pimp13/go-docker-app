@@ -21,6 +21,7 @@ type Handlers struct {
 	User     *UserController
 	Article  *ArticleController
 	Auth     *AuthController
+	SSO      *SSOController
 	Admin    *admin.API
 }
 
@@ -33,6 +34,7 @@ func NewHandlers(cfg *config.Config, svcs *service.Services, db *gorm.DB) *Handl
 		Auth:     auth,
 		User:     NewUserController(svcs.User, auth),
 		Article:  NewArticleController(svcs.Article, auth),
+		SSO:      NewSSOController(svcs.SSO, svcs.Auth, auth, cfg),
 		Admin:    admin.New(db),
 	}
 }
@@ -47,6 +49,7 @@ func Register(e *echo.Echo, cfg config.AppConfig, h *Handlers) {
 	registerAPI(api, h.User)
 	registerAPI(api, h.Article)
 	registerAPI(api, h.Auth)
+	registerAPI(api, h.SSO)
 
 	h.Admin.Register(api, h.Auth)
 }

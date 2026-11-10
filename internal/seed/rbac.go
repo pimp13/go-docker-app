@@ -34,6 +34,7 @@ var catalog = []permissionDef{
 	{model.PermUsersUpdate, "Update users", "users", "update", "Edit users"},
 	{model.PermUsersDelete, "Delete users", "users", "delete", "Delete users"},
 	{model.PermRolesManage, "Manage roles", "roles", "manage", "Manage roles and permissions"},
+	{model.PermSSOManage, "Manage SSO", "sso", "manage", "Manage SSO clients"},
 }
 
 var roles = []roleDef{
@@ -69,6 +70,7 @@ var roles = []roleDef{
 			model.PermUsersUpdate,
 			model.PermUsersDelete,
 			model.PermRolesManage,
+			model.PermSSOManage,
 		},
 	},
 }

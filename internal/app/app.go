@@ -54,6 +54,14 @@ func New(cfg *config.Config, db *gorm.DB) *App {
 func (a *App) registerMiddleware() {
 	a.engine.Use(middleware.RequestLogger())
 	a.engine.Use(middleware.Recover())
+	if len(a.cfg.App.CorsOrigins) > 0 {
+		a.engine.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins:     a.cfg.App.CorsOrigins,
+			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Accept", "Authorization", "Content-Type", "X-Requested-With"},
+			AllowCredentials: true,
+		}))
+	}
 }
 
 // Run starts the HTTP server and blocks until ctx is cancelled.

@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"test/internal/config"
 	"test/internal/dto"
@@ -16,12 +17,19 @@ import (
 const authUserKey = "auth_user"
 
 type AuthController struct {
-	auth service.AuthService
-	cfg  config.AuthConfig
+	auth                   service.AuthService
+	cfg                    config.AuthConfig
+	browserReturnPrefixes  []string
+	browserErrorOrigins    []string
 }
 
-func NewAuthController(auth service.AuthService, cfg config.AuthConfig) *AuthController {
-	return &AuthController{auth: auth, cfg: cfg}
+func NewAuthController(auth service.AuthService, cfg config.AuthConfig, browserReturnPrefixes, browserErrorOrigins []string) *AuthController {
+	return &AuthController{
+		auth:                  auth,
+		cfg:                   cfg,
+		browserReturnPrefixes: browserReturnPrefixes,
+		browserErrorOrigins:   browserErrorOrigins,
+	}
 }
 
 // AuthService exposes the underlying auth service for specialized modules.
@@ -33,6 +41,7 @@ func (c *AuthController) Register(api *echo.Group) {
 	auth := api.Group("/auth")
 	auth.POST("/sign-up", c.SignUp)
 	auth.POST("/login", c.Login)
+	auth.POST("/browser-login", c.BrowserLogin)
 	auth.POST("/logout", c.Logout)
 	auth.GET("/me", c.Me, c.RequireAuth)
 	auth.POST("/change-password", c.ChangePassword, c.RequireAuth)
@@ -108,6 +117,88 @@ func (c *AuthController) Login(ctx *echo.Context) error {
 
 	c.setSessionCookie(ctx, session)
 	return response.OK(ctx, session)
+}
+
+// BrowserLogin authenticates via form POST and redirects back for SSO authorize.
+//
+//	@Summary		Browser login for SSO
+//	@Description	Top-level form login that sets the IdP cookie then redirects to return_to
+//	@Tags			auth
+//	@Accept			application/x-www-form-urlencoded
+//	@Produce		json
+//	@Param			email			formData	string	true	"Email"
+//	@Param			password		formData	string	true	"Password"
+//	@Param			return_to		formData	string	true	"Authorize URL"
+//	@Param			error_redirect	formData	string	false	"Where to send the browser on failure"
+//	@Success		302	{string}	string
+//	@Failure		302	{string}	string
+//	@Router			/api/auth/browser-login [post]
+func (c *AuthController) BrowserLogin(ctx *echo.Context) error {
+	email := strings.TrimSpace(ctx.FormValue("email"))
+	password := ctx.FormValue("password")
+	returnTo := strings.TrimSpace(ctx.FormValue("return_to"))
+	errorRedirect := strings.TrimSpace(ctx.FormValue("error_redirect"))
+
+	if !c.isAllowedBrowserReturn(returnTo) {
+		return response.BadRequest(ctx, errors.New("invalid return_to"))
+	}
+
+	session, err := c.auth.Login(ctx.Request().Context(), dto.LoginRequest{
+		Email:    email,
+		Password: password,
+	})
+	if err != nil {
+		if target := c.browserErrorURL(errorRedirect, returnTo, err); target != "" {
+			return ctx.Redirect(http.StatusFound, target)
+		}
+		return writeAuthError(ctx, err)
+	}
+
+	c.setSessionCookie(ctx, session)
+	return ctx.Redirect(http.StatusFound, returnTo)
+}
+
+func (c *AuthController) isAllowedBrowserReturn(raw string) bool {
+	if raw == "" {
+		return false
+	}
+	for _, prefix := range c.browserReturnPrefixes {
+		if prefix != "" && strings.HasPrefix(raw, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *AuthController) browserErrorURL(errorRedirect, returnTo string, loginErr error) string {
+	if errorRedirect == "" || !c.isAllowedBrowserErrorRedirect(errorRedirect) {
+		return ""
+	}
+	u, err := url.Parse(errorRedirect)
+	if err != nil {
+		return ""
+	}
+	q := u.Query()
+	if returnTo != "" {
+		q.Set("return_to", returnTo)
+	}
+	q.Set("error", loginErr.Error())
+	u.RawQuery = q.Encode()
+	return u.String()
+}
+
+func (c *AuthController) isAllowedBrowserErrorRedirect(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return false
+	}
+	origin := u.Scheme + "://" + u.Host
+	for _, allowed := range c.browserErrorOrigins {
+		if origin == allowed {
+			return true
+		}
+	}
+	return false
 }
 
 // Logout clears the auth cookie.

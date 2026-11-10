@@ -47,6 +47,7 @@ type AppConfig struct {
 	HealthCheckRoute string
 	ShutdownTimeout  time.Duration
 	SecretKey        string
+	CorsOrigins      []string
 }
 
 // DatabaseConfig holds PostgreSQL connection settings.
@@ -162,6 +163,7 @@ func load() (*Config, error) {
 			HealthCheckRoute: envString("APP_HEALTH_CHECK_ROUTE", "/health"),
 			ShutdownTimeout:  shutdownTimeout,
 			SecretKey:        secretKey,
+			CorsOrigins:      envCSV("APP_CORS_ORIGINS", "http://localhost:3001"),
 		},
 		DB: DatabaseConfig{
 			Host:     envString("DB_HOST", "localhost"),
@@ -184,13 +186,13 @@ func load() (*Config, error) {
 		SSO: SSOConfig{
 			Issuer:                   envString("SSO_ISSUER", envString("AUTH_JWT_ISSUER", "test")),
 			PublicBaseURL:            envString("SSO_PUBLIC_BASE_URL", "http://localhost:8080"),
-			LoginURL:                 envString("SSO_LOGIN_URL", "http://localhost:3000/login"),
+			LoginURL:                 envString("SSO_LOGIN_URL", "http://localhost:3001/sso/idp-login"),
 			CodeTTL:                  ssoCodeTTL,
 			AccessTokenTTL:           ssoAccessTTL,
 			DefaultClientID:          envString("SSO_DEFAULT_CLIENT_ID", "demo-app"),
 			DefaultClientSecret:      envString("SSO_DEFAULT_CLIENT_SECRET", ""),
 			DefaultClientName:        envString("SSO_DEFAULT_CLIENT_NAME", "Demo App"),
-			DefaultClientRedirectURI: envString("SSO_DEFAULT_CLIENT_REDIRECT_URI", "http://localhost:3000/sso/callback"),
+			DefaultClientRedirectURI: envString("SSO_DEFAULT_CLIENT_REDIRECT_URI", "http://localhost:3000/api/sso/callback"),
 			DefaultClientRequirePKCE: ssoRequirePKCE,
 		},
 	}

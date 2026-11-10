@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"strings"
 	"test/internal/admin"
 	"test/internal/config"
 	"test/internal/service"
@@ -28,7 +29,8 @@ type Handlers struct {
 
 // NewHandlers builds controllers from the service container.
 func NewHandlers(cfg *config.Config, svcs *service.Services, db *gorm.DB) *Handlers {
-	auth := NewAuthController(svcs.Auth, cfg.Auth)
+	authorizePrefix := strings.TrimRight(cfg.SSO.PublicBaseURL, "/") + strings.TrimRight(cfg.App.Prefix, "/") + "/sso/authorize"
+	auth := NewAuthController(svcs.Auth, cfg.Auth, []string{authorizePrefix}, cfg.App.CorsOrigins)
 	return &Handlers{
 		Health:   NewHealthController(svcs.Health),
 		Greeting: NewGreetingController(svcs.Greeting, cfg.App.Version),

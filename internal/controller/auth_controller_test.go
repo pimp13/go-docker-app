@@ -53,7 +53,7 @@ func newAuthEngine(t *testing.T, auth service.AuthService) *echo.Echo {
 		CookiePath:     "/",
 		CookieSameSite: "lax",
 		TokenTTL:       time.Hour,
-	}).Register(e.Group("/api"))
+	}, nil, nil).Register(e.Group("/api"))
 	return e
 }
 
@@ -179,7 +179,7 @@ func TestRequirePermissionRejectsMissingCapability(t *testing.T) {
 		CookiePath:     "/",
 		CookieSameSite: "lax",
 		TokenTTL:       time.Hour,
-	})
+	}, nil, nil)
 
 	api := engine.Group("/api")
 	api.GET("/secure", func(ctx *echo.Context) error {
@@ -211,7 +211,7 @@ func TestRequirePermissionAllowsMatchingCapability(t *testing.T) {
 		CookiePath:     "/",
 		CookieSameSite: "lax",
 		TokenTTL:       time.Hour,
-	})
+	}, nil, nil)
 
 	api := engine.Group("/api")
 	api.GET("/secure", func(ctx *echo.Context) error {

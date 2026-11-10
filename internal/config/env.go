@@ -15,6 +15,20 @@ func envString(key, fallback string) string {
 	return fallback
 }
 
+func envCSV(key, fallback string) []string {
+	raw := envString(key, fallback)
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		value := strings.TrimSpace(part)
+		if value == "" {
+			continue
+		}
+		out = append(out, strings.TrimRight(value, "/"))
+	}
+	return out
+}
+
 func envStringRequired(key string) (string, error) {
 	value, ok := os.LookupEnv(key)
 	if !ok || strings.TrimSpace(value) == "" {

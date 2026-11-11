@@ -806,6 +806,42 @@ paths:
       summary: Create article
       tags:
       - articles
+  /api/auth/browser-login:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Top-level form login that sets the IdP cookie then redirects to
+        return_to
+      parameters:
+      - description: Email
+        in: formData
+        name: email
+        required: true
+        type: string
+      - description: Password
+        in: formData
+        name: password
+        required: true
+        type: string
+      - description: Authorize URL
+        in: formData
+        name: return_to
+        required: true
+        type: string
+      - description: Where to send the browser on failure
+        in: formData
+        name: error_redirect
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Browser login for SSO
+      tags:
+      - auth
   /api/auth/change-password:
     post:
       consumes:
@@ -936,6 +972,35 @@ paths:
       summary: Register a new user
       tags:
       - auth
+  /api/funmod/{param}:
+    get:
+      parameters:
+      - description: Param
+        in: path
+        name: param
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Funmod
+      tags:
+      - funmod
   /api/hello/{name}:
     get:
       parameters:

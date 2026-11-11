@@ -4,6 +4,7 @@ import (
 	"strings"
 	"test/internal/admin"
 	"test/internal/config"
+	"test/internal/funmod"
 	"test/internal/service"
 	"test/internal/sso"
 
@@ -25,6 +26,7 @@ type Handlers struct {
 	Auth     *AuthController
 	SSO      *sso.API
 	Admin    *admin.API
+	Funmod   *funmod.API
 }
 
 // NewHandlers builds controllers from the service container.
@@ -39,6 +41,7 @@ func NewHandlers(cfg *config.Config, svcs *service.Services, db *gorm.DB) *Handl
 		Article:  NewArticleController(svcs.Article, auth),
 		SSO:      sso.New(db, cfg),
 		Admin:    admin.New(db),
+		Funmod:   funmod.New(db, cfg),
 	}
 }
 
@@ -56,6 +59,7 @@ func Register(e *echo.Echo, cfg config.AppConfig, h *Handlers) {
 	// Specialized modules keep their own packages/controllers.
 	h.SSO.Register(api, h.Auth.AuthService(), h.Auth)
 	h.Admin.Register(api, h.Auth)
+	h.Funmod.Register(api)
 }
 
 func registerAPI(api *echo.Group, registrars ...Registrar) {

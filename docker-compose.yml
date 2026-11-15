@@ -93,6 +93,11 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Set PGADMIN_DEFAULT_EMAIL in .env}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Set PGADMIN_DEFAULT_PASSWORD in .env}
+      # Local-dev CSRF/cookie fixes (pgAdmin treats these as Python literals)
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "False"
+      PGADMIN_CONFIG_WTF_CSRF_ENABLED: "False"
+      PGADMIN_CONFIG_SESSION_COOKIE_SAMESITE: "\"Lax\""
+      PGADMIN_CONFIG_SESSION_COOKIE_SECURE: "False"
 
     ports:
       - "${PGADMIN_PORT:-5050}:80"

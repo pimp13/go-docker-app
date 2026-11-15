@@ -14,3 +14,6 @@ build:
 
 test:
 	go test ./...
+
+run-script:
+	go run cmd/ss/main.go

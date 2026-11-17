@@ -232,15 +232,14 @@ definitions:
       author_id:
         type: string
       content:
-        maxLength: 255
         minLength: 3
         type: string
       cover_image:
-        maxLength: 255
+        maxLength: 500
         minLength: 3
         type: string
       excerpt:
-        maxLength: 255
+        maxLength: 500
         minLength: 3
         type: string
       meta:
@@ -249,20 +248,22 @@ definitions:
       published_at:
         type: string
       slug:
+        maxLength: 255
+        minLength: 3
         type: string
       status:
         allOf:
         - $ref: '#/definitions/test_internal_model.ArticleStatus'
-        maxLength: 255
-        minLength: 3
+        enum:
+        - draft
+        - published
+        - archived
       title:
         maxLength: 255
         minLength: 3
         type: string
     required:
-    - author_id
     - content
-    - cover_image
     - excerpt
     - status
     - title
@@ -307,6 +308,40 @@ definitions:
     - first_name
     - last_name
     - password
+    type: object
+  test_internal_dto.UpdateArticleRequest:
+    properties:
+      content:
+        minLength: 3
+        type: string
+      cover_image:
+        maxLength: 500
+        minLength: 3
+        type: string
+      excerpt:
+        maxLength: 500
+        minLength: 3
+        type: string
+      meta:
+        additionalProperties: {}
+        type: object
+      published_at:
+        type: string
+      slug:
+        maxLength: 255
+        minLength: 3
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/test_internal_model.ArticleStatus'
+        enum:
+        - draft
+        - published
+        - archived
+      title:
+        maxLength: 255
+        minLength: 3
+        type: string
     type: object
   test_internal_dto.UserCreateRequest:
     properties:
@@ -716,6 +751,15 @@ paths:
       - admin-rbac
   /api/articles:
     get:
+      parameters:
+      - description: Filter by status (draft|published|archived|all)
+        in: query
+        name: status
+        type: string
+      - description: Search title, excerpt, or slug
+        in: query
+        name: search
+        type: string
       produces:
       - application/json
       responses:
@@ -738,6 +782,38 @@ paths:
       tags:
       - articles
   /api/articles/{id}:
+    delete:
+      parameters:
+      - description: Article ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Delete article
+      tags:
+      - articles
     get:
       parameters:
       - description: Article ID
@@ -764,10 +840,58 @@ paths:
           description: Forbidden
           schema:
             $ref: '#/definitions/test_pkg_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
       summary: Get article by ID
+      tags:
+      - articles
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Article ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Article payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/test_internal_dto.UpdateArticleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Update article
       tags:
       - articles
   /api/articles/create:
@@ -1035,6 +1159,67 @@ paths:
       summary: Generate development token
       tags:
       - general
+  /api/public/articles:
+    get:
+      parameters:
+      - description: Search title, excerpt, or slug
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      summary: List published articles
+      tags:
+      - public-articles
+  /api/public/articles/{slug}:
+    get:
+      parameters:
+      - description: Article slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      summary: Get published article by slug
+      tags:
+      - public-articles
+  /api/public/articles/{slug}/view:
+    post:
+      parameters:
+      - description: Article slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/test_pkg_response.APIResponse'
+      summary: Record article view
+      tags:
+      - public-articles
   /api/sso/.well-known/openid-configuration:
     get:
       produces:

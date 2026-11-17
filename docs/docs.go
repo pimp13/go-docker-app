@@ -551,6 +551,20 @@ const docTemplate = `{
                     "articles"
                 ],
                 "summary": "List articles",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status (draft|published|archived|all)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search title, excerpt, or slug",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -679,6 +693,134 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "articles"
+                ],
+                "summary": "Update article",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Article ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Article payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/test_internal_dto.UpdateArticleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "articles"
+                ],
+                "summary": "Delete article",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Article ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/test_pkg_response.APIResponse"
                         }
@@ -1038,6 +1180,101 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/public/articles": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "public-articles"
+                ],
+                "summary": "List published articles",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search title, excerpt, or slug",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/public/articles/{slug}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "public-articles"
+                ],
+                "summary": "Get published article by slug",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Article slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/public/articles/{slug}/view": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "public-articles"
+                ],
+                "summary": "Record article view",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Article slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/test_pkg_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/test_pkg_response.APIResponse"
                         }
@@ -1816,9 +2053,7 @@ const docTemplate = `{
         "test_internal_dto.CreateArticleRequest": {
             "type": "object",
             "required": [
-                "author_id",
                 "content",
-                "cover_image",
                 "excerpt",
                 "status",
                 "title"
@@ -1829,17 +2064,16 @@ const docTemplate = `{
                 },
                 "content": {
                     "type": "string",
-                    "maxLength": 255,
                     "minLength": 3
                 },
                 "cover_image": {
                     "type": "string",
-                    "maxLength": 255,
+                    "maxLength": 500,
                     "minLength": 3
                 },
                 "excerpt": {
                     "type": "string",
-                    "maxLength": 255,
+                    "maxLength": 500,
                     "minLength": 3
                 },
                 "meta": {
@@ -1850,11 +2084,16 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "slug": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 3
                 },
                 "status": {
-                    "maxLength": 255,
-                    "minLength": 3,
+                    "enum": [
+                        "draft",
+                        "published",
+                        "archived"
+                    ],
                     "allOf": [
                         {
                             "$ref": "#/definitions/test_internal_model.ArticleStatus"
@@ -1919,6 +2158,54 @@ const docTemplate = `{
                 "username": {
                     "type": "string",
                     "maxLength": 50,
+                    "minLength": 3
+                }
+            }
+        },
+        "test_internal_dto.UpdateArticleRequest": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "cover_image": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 3
+                },
+                "excerpt": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "minLength": 3
+                },
+                "meta": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "published_at": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 3
+                },
+                "status": {
+                    "enum": [
+                        "draft",
+                        "published",
+                        "archived"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/test_internal_model.ArticleStatus"
+                        }
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 255,
                     "minLength": 3
                 }
             }

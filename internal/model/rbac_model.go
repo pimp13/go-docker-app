@@ -8,9 +8,10 @@ import (
 
 // Built-in role slugs.
 const (
-	RoleSlugUser   = "user"
-	RoleSlugEditor = "editor"
-	RoleSlugAdmin  = "admin"
+	RoleSlugUser       = "user"
+	RoleSlugEditor     = "editor"
+	RoleSlugAdmin      = "admin"
+	RoleSlugSuperAdmin = "super_admin"
 )
 
 // Permission codes follow resource:action.

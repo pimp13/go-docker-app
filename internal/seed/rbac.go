@@ -155,8 +155,21 @@ func builtinRoles() []roleDef {
 		{
 			Slug:        model.RoleSlugAdmin,
 			Name:        "Admin",
-			Description: "Full access",
-			Permissions: allPermissionCodes(),
+			Description: "Full access including all comment permissions",
+			Permissions: mergePerms(
+				allPermissionCodes(),
+				crudCodes("comments"),
+			),
+		},
+		// Legacy / dashboard slug used by existing accounts.
+		{
+			Slug:        model.RoleSlugSuperAdmin,
+			Name:        "Super Admin",
+			Description: "Full access including all comment permissions",
+			Permissions: mergePerms(
+				allPermissionCodes(),
+				crudCodes("comments"),
+			),
 		},
 	}
 }

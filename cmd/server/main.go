@@ -68,11 +68,17 @@ func main() {
 	if err := seed.Setup(db); err != nil {
 		log.Fatalf("setup rbac: %v", err)
 	}
+	if err := seed.SetupOwner(db, cfg.Owner); err != nil {
+		log.Fatalf("setup owner: %v", err)
+	}
 	if err := seed.SetupSSO(db, cfg.SSO); err != nil {
 		log.Fatalf("setup sso: %v", err)
 	}
 
 	log.Println("Connected to PostgreSQL successfully!")
+	if email := cfg.Owner.Email; email != "" {
+		log.Printf("owner account ready: %s (role=super_admin)", email)
+	}
 
 	application := app.New(cfg, db)
 

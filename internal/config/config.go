@@ -17,10 +17,18 @@ var (
 
 // Config is the typed application configuration loaded from the environment.
 type Config struct {
-	App  AppConfig
-	DB   DatabaseConfig
-	Auth AuthConfig
-	SSO  SSOConfig
+	App   AppConfig
+	DB    DatabaseConfig
+	Auth  AuthConfig
+	SSO   SSOConfig
+	Owner OwnerConfig
+}
+
+// OwnerConfig seeds the application owner (super_admin) on startup.
+type OwnerConfig struct {
+	Email    string
+	Password string
+	Name     string
 }
 
 // SSOConfig holds OAuth2/OIDC-lite single sign-on settings.
@@ -197,6 +205,11 @@ func load() (*Config, error) {
 			DefaultClientName:        envString("SSO_DEFAULT_CLIENT_NAME", "Demo App"),
 			DefaultClientRedirectURI: envString("SSO_DEFAULT_CLIENT_REDIRECT_URI", "http://localhost:3000/api/sso/callback"),
 			DefaultClientRequirePKCE: ssoRequirePKCE,
+		},
+		Owner: OwnerConfig{
+			Email:    envString("SUPER_ADMIN_EMAIL", "admin@funlife.local"),
+			Password: envString("SUPER_ADMIN_PASSWORD", "admin123"),
+			Name:     envString("SUPER_ADMIN_NAME", "Super Admin"),
 		},
 	}
 

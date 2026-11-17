@@ -12,6 +12,7 @@ type Services struct {
 	Greeting GreetingService
 	User     UserService
 	Article  ArticleService
+	Comment  CommentService
 	Auth     AuthService
 }
 
@@ -22,6 +23,7 @@ func NewServices(cfg *config.Config, db *gorm.DB) *Services {
 		Greeting: NewGreetingService(cfg.App.Version, cfg.App.SecretKey),
 		User:     NewUserService(db, cfg.App.SecretKey),
 		Article:  NewArticleService(db, cfg.App.SecretKey),
+		Comment:  NewCommentService(db),
 		Auth:     NewAuthService(db, cfg),
 	}
 }

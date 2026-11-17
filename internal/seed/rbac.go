@@ -39,12 +39,10 @@ var defaultCRUDActions = []string{"read", "create", "update", "delete"}
 // Add a row here → permissions are created on next seed.
 var modules = []resourceCRUD{
 	{Resource: "articles", Description: "articles"},
+	{Resource: "comments", Description: "comments"},
 	{Resource: "users", Description: "users"},
 	{Resource: "roles", Actions: []string{"manage"}, Description: "roles and permissions"},
 	{Resource: "sso", Actions: []string{"manage"}, Description: "SSO clients"},
-	// مثال ماژول جدید:
-	// {Resource: "comments"},
-	// {Resource: "orders", Actions: []string{"read", "create", "update", "delete", "refund"}},
 }
 
 var catalog = buildCatalog(modules)
@@ -149,7 +147,10 @@ func builtinRoles() []roleDef {
 			Slug:        model.RoleSlugEditor,
 			Name:        "Editor",
 			Description: "Can create and edit content",
-			Permissions: permCodes("articles", "read", "create", "update"),
+			Permissions: mergePerms(
+				permCodes("articles", "read", "create", "update"),
+				permCodes("comments", "read", "update", "delete"),
+			),
 		},
 		{
 			Slug:        model.RoleSlugAdmin,
@@ -182,6 +183,7 @@ func Setup(db *gorm.DB) error {
 		&model.User{},
 		&model.Article{},
 		&model.Tag{},
+		&model.Comment{},
 	); err != nil {
 		return fmt.Errorf("auto migrate domain: %w", err)
 	}

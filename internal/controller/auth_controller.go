@@ -288,6 +288,22 @@ func (c *AuthController) RequireAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+// OptionalAuth attaches the user when a valid token exists, otherwise continues anonymously.
+func (c *AuthController) OptionalAuth(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(ctx *echo.Context) error {
+		raw, err := c.TokenFromRequest(ctx)
+		if err != nil || raw == "" {
+			return next(ctx)
+		}
+
+		user, err := c.auth.Authenticate(ctx.Request().Context(), raw)
+		if err == nil {
+			ctx.Set(authUserKey, user)
+		}
+		return next(ctx)
+	}
+}
+
 // RequirePermission ensures the authenticated user has every listed permission.
 // Always register after RequireAuth.
 func (c *AuthController) RequirePermission(codes ...string) echo.MiddlewareFunc {

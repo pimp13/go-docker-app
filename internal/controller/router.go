@@ -23,6 +23,7 @@ type Handlers struct {
 	Greeting *GreetingController
 	User     *UserController
 	Article  *ArticleController
+	Comment  *CommentController
 	Auth     *AuthController
 	SSO      *sso.API
 	Admin    *admin.API
@@ -39,6 +40,7 @@ func NewHandlers(cfg *config.Config, svcs *service.Services, db *gorm.DB) *Handl
 		Auth:     auth,
 		User:     NewUserController(svcs.User, auth),
 		Article:  NewArticleController(svcs.Article, auth),
+		Comment:  NewCommentController(svcs.Comment, auth),
 		SSO:      sso.New(db, cfg),
 		Admin:    admin.New(db),
 		Funmod:   funmod.New(db, cfg),
@@ -54,6 +56,7 @@ func Register(e *echo.Echo, cfg config.AppConfig, h *Handlers) {
 	registerAPI(api, h.Greeting)
 	registerAPI(api, h.User)
 	registerAPI(api, h.Article)
+	registerAPI(api, h.Comment)
 	registerAPI(api, h.Auth)
 
 	// Specialized modules keep their own packages/controllers.

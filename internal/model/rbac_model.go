@@ -20,6 +20,11 @@ const (
 	PermArticlesUpdate = "articles:update"
 	PermArticlesDelete = "articles:delete"
 
+	PermCommentsRead   = "comments:read"
+	PermCommentsCreate = "comments:create"
+	PermCommentsUpdate = "comments:update"
+	PermCommentsDelete = "comments:delete"
+
 	PermUsersRead   = "users:read"
 	PermUsersCreate = "users:create"
 	PermUsersUpdate = "users:update"

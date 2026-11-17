@@ -163,7 +163,10 @@ func load() (*Config, error) {
 			HealthCheckRoute: envString("APP_HEALTH_CHECK_ROUTE", "/health"),
 			ShutdownTimeout:  shutdownTimeout,
 			SecretKey:        secretKey,
-			CorsOrigins:      envCSV("APP_CORS_ORIGINS", "http://localhost:3001"),
+			CorsOrigins: envCSV(
+				"APP_CORS_ORIGINS",
+				"http://localhost:3001,http://127.0.0.1:3001",
+			),
 		},
 		DB: DatabaseConfig{
 			Host:     envString("DB_HOST", "localhost"),

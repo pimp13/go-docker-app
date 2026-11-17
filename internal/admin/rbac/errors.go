@@ -5,6 +5,7 @@ import "errors"
 var (
 	ErrRoleNotFound        = errors.New("role not found")
 	ErrPermissionNotFound  = errors.New("permission not found")
+	ErrPermissionCodeTaken = errors.New("permission code already exists")
 	ErrRoleSlugTaken       = errors.New("role slug already exists")
 	ErrSystemRoleProtected = errors.New("system roles cannot be deleted")
 	ErrRoleInUse           = errors.New("role is assigned to one or more users")

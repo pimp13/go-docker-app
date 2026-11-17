@@ -21,6 +21,7 @@ func (c *Controller) Register(admin *echo.Group, requirePerm RequirePermissionFu
 	group := admin.Group("/rbac", requirePerm(model.PermRolesManage))
 
 	group.GET("/permissions", c.ListPermissions)
+	group.POST("/permissions", c.CreatePermission)
 	group.GET("/roles", c.ListRoles)
 	group.GET("/roles/:id", c.GetRole)
 	group.POST("/roles", c.CreateRole)
@@ -47,6 +48,37 @@ func (c *Controller) ListPermissions(ctx *echo.Context) error {
 		return writeError(ctx, err)
 	}
 	return response.OK(ctx, map[string]any{"permissions": permissions})
+}
+
+// CreatePermission creates a permission in the catalog.
+//
+//	@Summary		Create permission
+//	@Tags			admin-rbac
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Security		CookieAuth
+//	@Param			body	body		CreatePermissionRequest	true	"Permission payload"
+//	@Success		201		{object}	response.APIResponse
+//	@Failure		400		{object}	response.APIResponse
+//	@Failure		401		{object}	response.APIResponse
+//	@Failure		403		{object}	response.APIResponse
+//	@Failure		409		{object}	response.APIResponse
+//	@Router			/api/admin/rbac/permissions [post]
+func (c *Controller) CreatePermission(ctx *echo.Context) error {
+	var req CreatePermissionRequest
+	if err := ctx.Bind(&req); err != nil {
+		return response.BadRequest(ctx, err)
+	}
+	if err := ctx.Validate(&req); err != nil {
+		return response.BadRequest(ctx, err)
+	}
+
+	permission, err := c.service.CreatePermission(ctx.Request().Context(), req)
+	if err != nil {
+		return writeError(ctx, err)
+	}
+	return response.Created(ctx, permission)
 }
 
 // ListRoles returns all roles with permissions.
@@ -245,7 +277,8 @@ func writeError(ctx *echo.Context, err error) error {
 		errors.Is(err, ErrPermissionNotFound),
 		errors.Is(err, ErrUserNotFound):
 		return response.NotFound(ctx, err)
-	case errors.Is(err, ErrRoleSlugTaken):
+	case errors.Is(err, ErrRoleSlugTaken),
+		errors.Is(err, ErrPermissionCodeTaken):
 		return response.Conflict(ctx, err)
 	case errors.Is(err, ErrSystemRoleProtected),
 		errors.Is(err, ErrRoleInUse),

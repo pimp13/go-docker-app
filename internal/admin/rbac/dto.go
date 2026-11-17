@@ -18,6 +18,14 @@ type PermissionResponse struct {
 	Description string `json:"description,omitempty"`
 }
 
+type CreatePermissionRequest struct {
+	Resource    string `json:"resource" validate:"required,min=2,max=50"`
+	Action      string `json:"action" validate:"required,min=2,max=50"`
+	Name        string `json:"name" validate:"omitempty,min=2,max=100"`
+	Description string `json:"description" validate:"omitempty,max=255"`
+	Code        string `json:"code" validate:"omitempty,min=3,max=100"`
+}
+
 type RoleResponse struct {
 	ID          string               `json:"id"`
 	Slug        string               `json:"slug"`

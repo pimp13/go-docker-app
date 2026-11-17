@@ -18,6 +18,7 @@ var roleSlugPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
 // Service manages roles and permissions for the admin panel.
 type Service interface {
 	ListPermissions(ctx context.Context) ([]PermissionResponse, error)
+	CreatePermission(ctx context.Context, req CreatePermissionRequest) (PermissionResponse, error)
 	ListRoles(ctx context.Context) ([]RoleResponse, error)
 	GetRoleByID(ctx context.Context, id string) (RoleResponse, error)
 	CreateRole(ctx context.Context, req CreateRoleRequest) (RoleResponse, error)
@@ -42,6 +43,48 @@ func (s *service) ListPermissions(ctx context.Context) ([]PermissionResponse, er
 		return nil, err
 	}
 	return toPermissionResponses(permissions), nil
+}
+
+func (s *service) CreatePermission(ctx context.Context, req CreatePermissionRequest) (PermissionResponse, error) {
+	resource := strings.ToLower(strings.TrimSpace(req.Resource))
+	action := strings.ToLower(strings.TrimSpace(req.Action))
+	if resource == "" || action == "" {
+		return PermissionResponse{}, ErrInvalidInput
+	}
+	if !roleSlugPattern.MatchString(resource) || !roleSlugPattern.MatchString(action) {
+		return PermissionResponse{}, ErrInvalidInput
+	}
+
+	code := strings.TrimSpace(req.Code)
+	if code == "" {
+		code = resource + ":" + action
+	}
+	code = strings.ToLower(code)
+
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		name = strings.ToUpper(action[:1]) + action[1:] + " " + resource
+	}
+	description := strings.TrimSpace(req.Description)
+
+	permission := model.Permission{
+		ID:          uuid.New(),
+		Code:        code,
+		Name:        name,
+		Resource:    resource,
+		Action:      action,
+		Description: description,
+	}
+
+	if err := s.db.WithContext(ctx).Create(&permission).Error; err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return PermissionResponse{}, ErrPermissionCodeTaken
+		}
+		return PermissionResponse{}, err
+	}
+
+	return toPermissionResponses([]model.Permission{permission})[0], nil
 }
 
 func (s *service) ListRoles(ctx context.Context) ([]RoleResponse, error) {

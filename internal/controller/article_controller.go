@@ -21,6 +21,12 @@ func NewArticleController(articleService service.ArticleService, auth *AuthContr
 }
 
 func (c *ArticleController) Register(api *echo.Group) {
+	// Public reader endpoints (no auth)
+	api.GET("/public/articles", c.GetPublishedArticles)
+	api.GET("/public/articles/:slug", c.GetPublishedArticleBySlug)
+	api.POST("/public/articles/:slug/view", c.RecordArticleView)
+
+	// Admin / editorial endpoints
 	api.GET("/articles", c.GetArticles, c.auth.RequireAuth, c.auth.RequirePermission(model.PermArticlesRead))
 	api.POST("/articles/create", c.CreateArticle, c.auth.RequireAuth, c.auth.RequirePermission(model.PermArticlesCreate))
 	api.GET("/articles/:id", c.GetArticleByID, c.auth.RequireAuth, c.auth.RequirePermission(model.PermArticlesRead))
@@ -66,6 +72,74 @@ func (c *ArticleController) CreateArticle(ctx *echo.Context) error {
 	}
 
 	result, err := c.articleService.CreateArticle(bodyData)
+	if err != nil {
+		return writeArticleError(ctx, err)
+	}
+
+	return response.OK(ctx, result)
+}
+
+// GetPublishedArticles lists published articles for readers.
+//
+//	@Summary		List published articles
+//	@Tags			public-articles
+//	@Produce		json
+//	@Param			search	query		string	false	"Search title, excerpt, or slug"
+//	@Success		200		{object}	response.APIResponse
+//	@Router			/api/public/articles [get]
+func (c *ArticleController) GetPublishedArticles(ctx *echo.Context) error {
+	var query dto.ListPublicArticlesQuery
+	if err := ctx.Bind(&query); err != nil {
+		return response.BadRequest(ctx, err)
+	}
+
+	result, err := c.articleService.GetPublishedArticles(query)
+	if err != nil {
+		return writeArticleError(ctx, err)
+	}
+
+	return response.OK(ctx, result)
+}
+
+// GetPublishedArticleBySlug returns one published article.
+//
+//	@Summary		Get published article by slug
+//	@Tags			public-articles
+//	@Produce		json
+//	@Param			slug	path		string	true	"Article slug"
+//	@Success		200		{object}	response.APIResponse
+//	@Failure		404		{object}	response.APIResponse
+//	@Router			/api/public/articles/{slug} [get]
+func (c *ArticleController) GetPublishedArticleBySlug(ctx *echo.Context) error {
+	slug := ctx.Param("slug")
+	if slug == "" {
+		return response.BadRequest(ctx, errors.New("slug is required"))
+	}
+
+	result, err := c.articleService.GetPublishedArticleBySlug(slug)
+	if err != nil {
+		return writeArticleError(ctx, err)
+	}
+
+	return response.OK(ctx, result)
+}
+
+// RecordArticleView increments the view counter for a published article.
+//
+//	@Summary		Record article view
+//	@Tags			public-articles
+//	@Produce		json
+//	@Param			slug	path		string	true	"Article slug"
+//	@Success		200		{object}	response.APIResponse
+//	@Failure		404		{object}	response.APIResponse
+//	@Router			/api/public/articles/{slug}/view [post]
+func (c *ArticleController) RecordArticleView(ctx *echo.Context) error {
+	slug := ctx.Param("slug")
+	if slug == "" {
+		return response.BadRequest(ctx, errors.New("slug is required"))
+	}
+
+	result, err := c.articleService.RecordArticleView(slug)
 	if err != nil {
 		return writeArticleError(ctx, err)
 	}

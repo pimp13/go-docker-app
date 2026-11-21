@@ -17,10 +17,10 @@ import (
 const authUserKey = "auth_user"
 
 type AuthController struct {
-	auth                   service.AuthService
-	cfg                    config.AuthConfig
-	browserReturnPrefixes  []string
-	browserErrorOrigins    []string
+	auth                  service.AuthService
+	cfg                   config.AuthConfig
+	browserReturnPrefixes []string
+	browserErrorOrigins   []string
 }
 
 func NewAuthController(auth service.AuthService, cfg config.AuthConfig, browserReturnPrefixes, browserErrorOrigins []string) *AuthController {
@@ -44,6 +44,7 @@ func (c *AuthController) Register(api *echo.Group) {
 	auth.POST("/browser-login", c.BrowserLogin)
 	auth.POST("/logout", c.Logout)
 	auth.GET("/me", c.Me, c.RequireAuth)
+	auth.PUT("/profile", c.UpdateProfile, c.RequireAuth)
 	auth.POST("/change-password", c.ChangePassword, c.RequireAuth)
 }
 
@@ -233,6 +234,42 @@ func (c *AuthController) Me(ctx *echo.Context) error {
 	return response.OK(ctx, user)
 }
 
+// UpdateProfile updates the authenticated user's profile fields.
+//
+//	@Summary		Update profile
+//	@Description	Updates name, username, phone, and avatar for the current user
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Security		CookieAuth
+//	@Param			body	body		dto.UpdateProfileRequest	true	"Profile payload"
+//	@Success		200		{object}	response.APIResponse
+//	@Failure		400		{object}	response.APIResponse
+//	@Failure		401		{object}	response.APIResponse
+//	@Failure		409		{object}	response.APIResponse
+//	@Router			/api/auth/profile [put]
+func (c *AuthController) UpdateProfile(ctx *echo.Context) error {
+	user, err := currentAuthUser(ctx)
+	if err != nil {
+		return response.Unauthorized(ctx, err)
+	}
+
+	var req dto.UpdateProfileRequest
+	if err := ctx.Bind(&req); err != nil {
+		return response.BadRequest(ctx, err)
+	}
+	if err := ctx.Validate(&req); err != nil {
+		return response.BadRequest(ctx, err)
+	}
+
+	updated, err := c.auth.UpdateProfile(ctx.Request().Context(), user.ID, req)
+	if err != nil {
+		return writeAuthError(ctx, err)
+	}
+	return response.OK(ctx, updated)
+}
+
 // ChangePassword updates the password and refreshes the session cookie.
 //
 //	@Summary		Change password
@@ -399,6 +436,8 @@ func writeAuthError(ctx *echo.Context, err error) error {
 	case errors.Is(err, service.ErrEmailTaken),
 		errors.Is(err, service.ErrUsernameTaken):
 		return response.Conflict(ctx, err)
+	case errors.Is(err, service.ErrUserNotFound):
+		return response.NotFound(ctx, err)
 	case errors.Is(err, service.ErrWrongPassword),
 		errors.Is(err, service.ErrPasswordUnchanged),
 		errors.Is(err, service.ErrInvalidPassword),

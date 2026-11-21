@@ -45,6 +45,8 @@ type AuthService interface {
 	Login(ctx context.Context, req dto.LoginRequest) (dto.Session, error)
 	Authenticate(ctx context.Context, rawToken string) (dto.AuthUser, error)
 	ChangePassword(ctx context.Context, userID string, req dto.ChangePasswordRequest) (dto.Session, error)
+	UpdateProfile(ctx context.Context, userID string, req dto.UpdateProfileRequest) (dto.AuthUser, error)
+	GetPublicProfile(ctx context.Context, handle string) (dto.PublicProfile, error)
 }
 
 type authService struct {
@@ -180,6 +182,110 @@ func (s *authService) Authenticate(ctx context.Context, rawToken string) (dto.Au
 	return toAuthUser(user), nil
 }
 
+func (s *authService) UpdateProfile(
+	ctx context.Context,
+	userID string,
+	req dto.UpdateProfileRequest,
+) (dto.AuthUser, error) {
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		return dto.AuthUser{}, ErrInvalidToken
+	}
+
+	req.FirstName = strings.TrimSpace(req.FirstName)
+	req.LastName = strings.TrimSpace(req.LastName)
+	req.Username = strings.ToLower(strings.TrimSpace(req.Username))
+	req.Phone = strings.TrimSpace(req.Phone)
+	req.Avatar = strings.TrimSpace(req.Avatar)
+
+	if req.FirstName == "" || req.LastName == "" {
+		return dto.AuthUser{}, ErrInvalidInput
+	}
+
+	user, err := s.findByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.AuthUser{}, ErrInvalidToken
+		}
+		return dto.AuthUser{}, err
+	}
+	if user.Status != model.UserStatusActive {
+		return dto.AuthUser{}, ErrAccountDisabled
+	}
+
+	if req.Username != "" {
+		var count int64
+		if err := s.db.WithContext(ctx).Model(&model.User{}).
+			Where("username = ? AND id <> ?", req.Username, user.ID).
+			Count(&count).Error; err != nil {
+			return dto.AuthUser{}, err
+		}
+		if count > 0 {
+			return dto.AuthUser{}, ErrUsernameTaken
+		}
+	}
+
+	updates := map[string]any{
+		"first_name": req.FirstName,
+		"last_name":  req.LastName,
+		"phone":      req.Phone,
+		"avatar":     req.Avatar,
+	}
+	if req.Username == "" {
+		updates["username"] = nil
+	} else {
+		updates["username"] = req.Username
+	}
+
+	if err := s.db.WithContext(ctx).Model(&model.User{}).Where("id = ?", user.ID).Updates(updates).Error; err != nil {
+		return dto.AuthUser{}, mapUniqueViolation(err)
+	}
+
+	updated, err := s.findByID(ctx, user.ID)
+	if err != nil {
+		return dto.AuthUser{}, err
+	}
+	return toAuthUser(updated), nil
+}
+
+func (s *authService) GetPublicProfile(ctx context.Context, handle string) (dto.PublicProfile, error) {
+	handle = strings.TrimSpace(handle)
+	handle = strings.TrimPrefix(handle, "@")
+	if handle == "" {
+		return dto.PublicProfile{}, ErrInvalidInput
+	}
+
+	var user model.User
+	query := s.db.WithContext(ctx).Preload("Role")
+	if id, err := uuid.Parse(handle); err == nil {
+		query = query.Where("id = ?", id)
+	} else {
+		query = query.Where("LOWER(username) = ?", strings.ToLower(handle))
+	}
+
+	if err := query.Take(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.PublicProfile{}, ErrUserNotFound
+		}
+		return dto.PublicProfile{}, err
+	}
+	if user.Status == model.UserStatusBanned {
+		return dto.PublicProfile{}, ErrUserNotFound
+	}
+
+	return dto.PublicProfile{
+		ID:        user.ID.String(),
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Username:  user.Username,
+		Avatar:    user.Avatar,
+		Role:      user.Role.Slug,
+		RoleName:  user.Role.Name,
+		Status:    string(user.Status),
+		CreatedAt: user.CreatedAt,
+	}, nil
+}
+
 func (s *authService) ChangePassword(ctx context.Context, userID string, req dto.ChangePasswordRequest) (dto.Session, error) {
 	id, err := uuid.Parse(userID)
 	if err != nil {
@@ -295,6 +401,7 @@ func toAuthUser(user model.User) dto.AuthUser {
 		Email:       user.Email,
 		Username:    user.Username,
 		Phone:       user.Phone,
+		Avatar:      user.Avatar,
 		Role:        user.Role.Slug,
 		Permissions: user.Role.PermissionCodes(),
 		Status:      string(user.Status),

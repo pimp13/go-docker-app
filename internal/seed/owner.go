@@ -36,6 +36,7 @@ func SetupOwner(db *gorm.DB, cfg config.OwnerConfig) error {
 	}
 
 	firstName, lastName := splitOwnerName(cfg.Name)
+	username := strings.ToLower(strings.TrimSpace(cfg.Username))
 
 	var existing model.User
 	err = db.Where("email = ?", email).Take(&existing).Error
@@ -48,6 +49,9 @@ func SetupOwner(db *gorm.DB, cfg config.OwnerConfig) error {
 			"role_id":    role.ID,
 			"status":     model.UserStatusActive,
 		}
+		if username != "" {
+			updates["username"] = username
+		}
 		if err := db.Model(&existing).Updates(updates).Error; err != nil {
 			return fmt.Errorf("update owner user: %w", err)
 		}
@@ -58,13 +62,18 @@ func SetupOwner(db *gorm.DB, cfg config.OwnerConfig) error {
 			FirstName: firstName,
 			LastName:  lastName,
 			Email:     email,
+			Username:  username,
 			Password:  string(hashed),
 			RoleID:    role.ID,
 			Status:    model.UserStatusActive,
 			Meta:      datatypes.JSONMap{"seeded_owner": true},
 		}
 		// Password is already hashed — skip BeforeCreate re-hash.
-		if err := db.Session(&gorm.Session{SkipHooks: true}).Omit("Username").Create(&user).Error; err != nil {
+		create := db.Session(&gorm.Session{SkipHooks: true})
+		if username == "" {
+			create = create.Omit("Username")
+		}
+		if err := create.Create(&user).Error; err != nil {
 			return fmt.Errorf("create owner user: %w", err)
 		}
 		return nil

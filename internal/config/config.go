@@ -29,6 +29,7 @@ type OwnerConfig struct {
 	Email    string
 	Password string
 	Name     string
+	Username string
 }
 
 // SSOConfig holds OAuth2/OIDC-lite single sign-on settings.
@@ -210,6 +211,7 @@ func load() (*Config, error) {
 			Email:    envString("SUPER_ADMIN_EMAIL", "admin@funlife.local"),
 			Password: envString("SUPER_ADMIN_PASSWORD", "admin123"),
 			Name:     envString("SUPER_ADMIN_NAME", "Super Admin"),
+			Username: envString("SUPER_ADMIN_USERNAME", "admin"),
 		},
 	}
 

@@ -21,6 +21,14 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"new_password" validate:"required,min=8,max=72"`
 }
 
+type UpdateProfileRequest struct {
+	FirstName string `json:"first_name" validate:"required,min=2,max=100"`
+	LastName  string `json:"last_name" validate:"required,min=2,max=100"`
+	Username  string `json:"username" validate:"omitempty,min=3,max=50,alphanum"`
+	Phone     string `json:"phone" validate:"omitempty,e164"`
+	Avatar    string `json:"avatar" validate:"omitempty,max=500"`
+}
+
 // AuthUser is the public profile returned by auth endpoints.
 type AuthUser struct {
 	ID          string   `json:"id"`
@@ -29,9 +37,23 @@ type AuthUser struct {
 	Email       string   `json:"email"`
 	Username    string   `json:"username,omitempty"`
 	Phone       string   `json:"phone,omitempty"`
+	Avatar      string   `json:"avatar,omitempty"`
 	Role        string   `json:"role"`
 	Permissions []string `json:"permissions"`
 	Status      string   `json:"status"`
+}
+
+// PublicProfile is a shareable profile by username or id.
+type PublicProfile struct {
+	ID        string    `json:"id"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Username  string    `json:"username,omitempty"`
+	Avatar    string    `json:"avatar,omitempty"`
+	Role      string    `json:"role"`
+	RoleName  string    `json:"role_name"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // HasPermission reports whether the authenticated user includes the code.

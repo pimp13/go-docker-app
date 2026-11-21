@@ -20,11 +20,33 @@ func NewUserController(userService service.UserService, auth *AuthController) *U
 }
 
 func (c *UserController) Register(api *echo.Group) {
+	api.GET("/public/users/:handle", c.GetPublicProfile)
 	api.POST("/users/create", c.CreateUser, c.auth.RequireAuth, c.auth.RequirePermission(model.PermUsersCreate))
 	api.GET("/users/get-all", c.GetAllUsers, c.auth.RequireAuth, c.auth.RequirePermission(model.PermUsersRead))
 	api.GET("/users/get-by-id/:id", c.GetUserByID, c.auth.RequireAuth, c.auth.RequirePermission(model.PermUsersRead))
 	api.PUT("/users/:id", c.UpdateUser, c.auth.RequireAuth, c.auth.RequirePermission(model.PermUsersUpdate))
 	api.DELETE("/users/:id", c.DeleteUser, c.auth.RequireAuth, c.auth.RequirePermission(model.PermUsersDelete))
+}
+
+// GetPublicProfile returns a shareable profile by username or id.
+//
+//	@Summary		Public user profile
+//	@Tags			users
+//	@Produce		json
+//	@Param			handle	path		string	true	"Username or user id"
+//	@Success		200		{object}	response.APIResponse
+//	@Failure		404		{object}	response.APIResponse
+//	@Router			/api/public/users/{handle} [get]
+func (c *UserController) GetPublicProfile(ctx *echo.Context) error {
+	handle := ctx.Param("handle")
+	if handle == "" {
+		return response.BadRequest(ctx, errors.New("handle is required"))
+	}
+	profile, err := c.auth.AuthService().GetPublicProfile(ctx.Request().Context(), handle)
+	if err != nil {
+		return writeUserError(ctx, err)
+	}
+	return response.OK(ctx, profile)
 }
 
 // CreateUser creates a user (admin/staff capability).
@@ -187,7 +209,8 @@ func writeUserError(ctx *echo.Context, err error) error {
 		return response.Conflict(ctx, err)
 	case errors.Is(err, service.ErrCannotDeleteSelf),
 		errors.Is(err, service.ErrCannotDemoteSelf),
-		errors.Is(err, service.ErrLastSuperAdminProtected):
+		errors.Is(err, service.ErrLastSuperAdminProtected),
+		errors.Is(err, service.ErrInvalidInput):
 		return response.BadRequest(ctx, err)
 	default:
 		return response.InternalServerError(ctx, err)

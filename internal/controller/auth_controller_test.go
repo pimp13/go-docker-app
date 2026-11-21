@@ -44,6 +44,22 @@ func (s *stubAuth) ChangePassword(context.Context, string, dto.ChangePasswordReq
 	return s.session, s.err
 }
 
+func (s *stubAuth) UpdateProfile(context.Context, string, dto.UpdateProfileRequest) (dto.AuthUser, error) {
+	return s.session.User, s.err
+}
+
+func (s *stubAuth) GetPublicProfile(context.Context, string) (dto.PublicProfile, error) {
+	return dto.PublicProfile{
+		ID:        s.session.User.ID,
+		FirstName: s.session.User.FirstName,
+		LastName:  s.session.User.LastName,
+		Username:  s.session.User.Username,
+		Avatar:    s.session.User.Avatar,
+		Role:      s.session.User.Role,
+		Status:    s.session.User.Status,
+	}, s.err
+}
+
 func newAuthEngine(t *testing.T, auth service.AuthService) *echo.Echo {
 	t.Helper()
 	e := echo.New()

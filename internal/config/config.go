@@ -17,11 +17,20 @@ var (
 
 // Config is the typed application configuration loaded from the environment.
 type Config struct {
-	App   AppConfig
-	DB    DatabaseConfig
-	Auth  AuthConfig
-	SSO   SSOConfig
-	Owner OwnerConfig
+	App    AppConfig
+	DB     DatabaseConfig
+	Auth   AuthConfig
+	SSO    SSOConfig
+	Owner  OwnerConfig
+	Upload UploadConfig
+}
+
+// UploadConfig holds local file upload and static media settings.
+type UploadConfig struct {
+	Dir           string
+	PublicPath    string
+	MaxBytes      int64
+	PublicBaseURL string
 }
 
 // OwnerConfig seeds the application owner (super_admin) on startup.
@@ -163,6 +172,13 @@ func load() (*Config, error) {
 		return nil, err
 	}
 
+	uploadMaxBytes, err := envInt64("UPLOAD_MAX_BYTES", 5<<20)
+	if err != nil {
+		return nil, err
+	}
+
+	ssoPublicBaseURL := envString("SSO_PUBLIC_BASE_URL", "http://localhost:8080")
+
 	cfg := &Config{
 		App: AppConfig{
 			Port:             port,
@@ -197,7 +213,7 @@ func load() (*Config, error) {
 		},
 		SSO: SSOConfig{
 			Issuer:                   envString("SSO_ISSUER", envString("AUTH_JWT_ISSUER", "test")),
-			PublicBaseURL:            envString("SSO_PUBLIC_BASE_URL", "http://localhost:8080"),
+			PublicBaseURL:            ssoPublicBaseURL,
 			LoginURL:                 envString("SSO_LOGIN_URL", "http://localhost:3001/sso/idp-login"),
 			CodeTTL:                  ssoCodeTTL,
 			AccessTokenTTL:           ssoAccessTTL,
@@ -212,6 +228,12 @@ func load() (*Config, error) {
 			Password: envString("SUPER_ADMIN_PASSWORD", "admin123"),
 			Name:     envString("SUPER_ADMIN_NAME", "Super Admin"),
 			Username: envString("SUPER_ADMIN_USERNAME", "admin"),
+		},
+		Upload: UploadConfig{
+			Dir:           envString("UPLOAD_DIR", "./uploads"),
+			PublicPath:    envString("UPLOAD_PUBLIC_PATH", "/uploads"),
+			MaxBytes:      uploadMaxBytes,
+			PublicBaseURL: envString("UPLOAD_PUBLIC_BASE_URL", ssoPublicBaseURL),
 		},
 	}
 
@@ -292,6 +314,18 @@ func (c *Config) validate() error {
 	}
 	if strings.TrimSpace(c.SSO.DefaultClientID) != "" && len(strings.TrimSpace(c.SSO.DefaultClientSecret)) < 16 {
 		return fmt.Errorf("SSO_DEFAULT_CLIENT_SECRET must be at least 16 characters when default client id is set")
+	}
+	if strings.TrimSpace(c.Upload.Dir) == "" {
+		return fmt.Errorf("UPLOAD_DIR must not be empty")
+	}
+	if !strings.HasPrefix(c.Upload.PublicPath, "/") {
+		return fmt.Errorf("UPLOAD_PUBLIC_PATH must start with /")
+	}
+	if c.Upload.MaxBytes <= 0 {
+		return fmt.Errorf("UPLOAD_MAX_BYTES must be greater than zero")
+	}
+	if strings.TrimSpace(c.Upload.PublicBaseURL) == "" {
+		return fmt.Errorf("UPLOAD_PUBLIC_BASE_URL must not be empty")
 	}
 	return nil
 }

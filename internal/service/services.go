@@ -14,6 +14,7 @@ type Services struct {
 	Article  ArticleService
 	Comment  CommentService
 	Auth     AuthService
+	Upload   UploadService
 }
 
 // NewServices wires concrete general service implementations.
@@ -25,5 +26,6 @@ func NewServices(cfg *config.Config, db *gorm.DB) *Services {
 		Article:  NewArticleService(db, cfg.App.SecretKey),
 		Comment:  NewCommentService(db),
 		Auth:     NewAuthService(db, cfg),
+		Upload:   NewUploadService(cfg.Upload),
 	}
 }

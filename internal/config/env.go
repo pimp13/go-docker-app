@@ -75,3 +75,16 @@ func envDuration(key string, fallback time.Duration) (time.Duration, error) {
 	}
 	return parsed, nil
 }
+
+func envInt64(key string, fallback int64) (int64, error) {
+	raw, ok := os.LookupEnv(key)
+	if !ok || raw == "" {
+		return fallback, nil
+	}
+
+	parsed, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("environment variable %q must be an integer: %w", key, err)
+	}
+	return parsed, nil
+}

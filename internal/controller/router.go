@@ -25,9 +25,11 @@ type Handlers struct {
 	Article  *ArticleController
 	Comment  *CommentController
 	Auth     *AuthController
+	Upload   *UploadController
 	SSO      *sso.API
 	Admin    *admin.API
 	Funmod   *funmod.API
+	upload   config.UploadConfig
 }
 
 // NewHandlers builds controllers from the service container.
@@ -41,9 +43,11 @@ func NewHandlers(cfg *config.Config, svcs *service.Services, db *gorm.DB) *Handl
 		User:     NewUserController(svcs.User, auth),
 		Article:  NewArticleController(svcs.Article, auth),
 		Comment:  NewCommentController(svcs.Comment, auth),
+		Upload:   NewUploadController(svcs.Upload, auth, cfg.Upload),
 		SSO:      sso.New(db, cfg),
 		Admin:    admin.New(db),
 		Funmod:   funmod.New(db, cfg),
+		upload:   cfg.Upload,
 	}
 }
 
@@ -51,6 +55,7 @@ func NewHandlers(cfg *config.Config, svcs *service.Services, db *gorm.DB) *Handl
 func Register(e *echo.Echo, cfg config.AppConfig, h *Handlers) {
 	RegisterSwagger(e)
 	e.GET(cfg.HealthCheckRoute, h.Health.Check)
+	e.Static(h.upload.PublicPath, h.upload.Dir)
 
 	api := e.Group(cfg.Prefix)
 	registerAPI(api, h.Greeting)
@@ -58,6 +63,7 @@ func Register(e *echo.Echo, cfg config.AppConfig, h *Handlers) {
 	registerAPI(api, h.Article)
 	registerAPI(api, h.Comment)
 	registerAPI(api, h.Auth)
+	registerAPI(api, h.Upload)
 
 	// Specialized modules keep their own packages/controllers.
 	h.SSO.Register(api, h.Auth.AuthService(), h.Auth)

@@ -106,7 +106,9 @@ func nestComments(comments []model.Comment) []dto.CommentResponse {
 		order = append(order, comment.ID)
 	}
 
-	roots := make([]dto.CommentResponse, 0)
+	// Attach replies onto the live pointers first, then materialize roots.
+	// Copying roots before replies are attached drops nested children.
+	rootIDs := make([]uuid.UUID, 0)
 	for _, id := range order {
 		item := byID[id]
 		if item.ParentID != nil {
@@ -115,7 +117,12 @@ func nestComments(comments []model.Comment) []dto.CommentResponse {
 				continue
 			}
 		}
-		roots = append(roots, *item)
+		rootIDs = append(rootIDs, id)
+	}
+
+	roots := make([]dto.CommentResponse, 0, len(rootIDs))
+	for _, id := range rootIDs {
+		roots = append(roots, *byID[id])
 	}
 	return roots
 }
